@@ -1,598 +1,241 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>TAXOS AI — Your AI CFO</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --bg: #030308;
-    --surface: #0a0a14;
-    --surfaceAlt: #111122;
-    --primary: #7c5cff;
-    --accent: #00e0c6;
-    --danger: #ff5c7c;
-    --muted: #94a3b8;
-    --text: #ffffff;
-  }
-  body {
-    font-family: 'Inter', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    overflow-x: hidden;
-  }
-  #bg-canvas {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-  }
-  .app { position: relative; z-index: 1; }
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>TAXOS AI</title><script src="https://cdn.tailwindcss.com"><\/script><script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script><link rel="manifest" href="/manifest.json"/><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');:root{--bg:#08090a;--surface:#111214;--border:#26272a;--primary:#5e6ad2;--text:#ededed;--muted:#8a8f98}*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}#bg3d{position:fixed;inset:0;z-index:0;pointer-events:none}.app{position:relative;z-index:1;display:flex;height:100vh}.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 12px;transition:width .2s}.sidebar.collapsed{width:64px}.sidebar .logo{font-weight:700;font-size:18px;padding:8px 12px;margin-bottom:16px;white-space:nowrap;overflow:hidden}.sidebar nav{flex:1;overflow-y:auto}.sidebar nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap;overflow:hidden}.sidebar nav a.active,.sidebar nav a:hover{background:#1a1c20;color:var(--text)}.sidebar nav a .icon{font-size:16px;width:20px;text-align:center}.main{flex:1;display:flex;flex-direction:column;overflow:hidden}.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;background:rgba(8,9,10,.7);backdrop-filter:blur(12px)}.search{background:#1a1c20;border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13px;width:280px}.content{flex:1;overflow-y:auto;padding:24px}.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}.kpi .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}.kpi .value{font-size:24px;font-weight:600;margin-top:4px}.kpi .change{font-size:11px;margin-top:4px}.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px}.btn{background:var(--primary);color:white;border:none;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}.btn-secondary{background:#1a1c20;color:var(--text);border:1px solid var(--border)}input,select,textarea{background:#1a1c20;border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:13px;width:100%}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px}@media(max-width:768px){.sidebar{position:fixed;z-index:50;height:100vh}.kpi-grid{grid-template-columns:1fr 1fr}}</style></head><body><div id="bg3d"></div><div class="app"><aside class="sidebar" id="sidebar"><div class="logo">TAXOS AI</div><nav id="nav"></nav></aside><main class="main"><div class="topbar"><button class="btn-secondary" onclick="toggleSidebar()" style="padding:6px 10px">☰</button><input class="search" placeholder="Search modules, commands…" oninput="filterNav(this.value)"/><span style="margin-left:auto;color:var(--muted);font-size:12px">v1.0</span></div><div class="content" id="content"></div></main></div><script>
+const ROUTES = {
+  dashboard:{title:'Dashboard',icon:'◡ױ',section:'Core'},
+  tax:{title:'Tax AI',icon:'🧾',section:'Core'},
+  gst:{title:'GST AI',icon:'💸',section:'Core'},
+  compliance:{title:'Compliance AI',icon:'🛡️',section:'Core'},
+  invoices:{title:'Invoices',icon:'📑',section:'Operations'},
+  cashflow:{title:'Cash Flow AI',icon:'📈',section:'Operations'},
+  audit:{title:'AI Auditor',icon:'🔍',section:'Operations'},
+  settings:{title:'Settings',icon:'⚙️',section:'Account'},
+};
+const MODULES = {
+  tax:{title:'Personal Tax AI',icon:'🧾'},
+  gst:{title:'GST AI',icon:'💸'},
+  compliance:{title:'Compliance AI',icon:'🛡️'},
+  cfo:{title:'AI CFO',icon:'📈'},
+  audit:{title:'AI Auditor',icon:'🔍'},
+  business:{title:'Business Consultant',icon:'💼'},
+  fraud:{title:'Fraud Detection',icon:'🚨'},
+  legal:{title:'AI Legal Compliance',icon:'⚖️'},
+  hr:{title:'AI HR Compliance',icon:'👥'},
+  fundraising:{title:'AI Fundraising Advisor',icon:'💰'},
+  health:{title:'AI Business Health',icon:'❤️'},
+  collections:{title:'AI Collections Agent',icon:'📬'},
+  procurement:{title:'AI Procurement',icon:'🛒'},
+  benefits:{title:'Government Benefits',icon:'🏛️'},
+  global:{title:'AI Global Expansion',icon:'🌍'},
+  chat:{title:'AI Chat / CFO',icon:'💬'},
+  statements:{title:'Financial Statements',icon:'📊'},
+};
+let state = {route:'dashboard',user:null};
 
-  .sidebar {
-    position: fixed;
-    left: 0; top: 0; bottom: 0;
-    width: 240px;
-    background: rgba(10,10,20,0.85);
-    backdrop-filter: blur(16px);
-    border-right: 1px solid rgba(255,255,255,0.06);
-    padding: 24px 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .logo {
-    font-size: 20px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    padding: 0 12px 20px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    margin-bottom: 8px;
-  }
-  .logo span { color: var(--accent); }
-  .nav-item {
-    padding: 10px 12px;
-    border-radius: 10px;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    transition: all 0.2s;
-  }
-  .nav-item:hover { background: rgba(124,92,255,0.1); color: white; }
-  .nav-item.active { background: rgba(124,92,255,0.2); color: white; }
-  .nav-icon { width: 18px; text-align: center; font-size: 16px; }
-  .main { margin-left: 240px; padding: 32px; min-height: 100vh; }
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 32px;
-  }
-  .header h1 {
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
-  }
-  .header h1 span { color: var(--accent); }
-  .user-pill {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.08);
-    padding: 6px 14px 6px 6px;
-    border-radius: 100px;
-    font-size: 13px;
-  }
-  .avatar {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 13px;
-    color: #000;
-  }
-
-  .grid-4 {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-  .grid-2 {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-  .grid-3 {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-  .card {
-    background: rgba(17,17,34,0.7);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 16px;
-    padding: 22px;
-    transition: transform 0.2s, box-shadow 0.2s;
-  }
-  .card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-  }
-  .card-label {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: var(--muted);
-    margin-bottom: 10px;
-  }
-  .card-value {
-    font-size: 28px;
-    font-weight: 700;
-    letter-spacing: -1px;
-    line-height: 1;
-  }
-  .card-sub {
-    font-size: 12px;
-    margin-top: 8px;
-    color: var(--muted);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .up { color: var(--accent); }
-  .down { color: var(--danger); }
-
-  .section-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 14px;
-    color: white;
-  }
-  .badge {
-    display: inline-flex;
-    padding: 4px 10px;
-    border-radius: 100px;
-    font-size: 11px;
-    font-weight: 500;
-    border: 1px solid rgba(255,255,255,0.1);
-    background: rgba(255,255,255,0.03);
-    color: var(--muted);
-  }
-  .badge.green { color: var(--accent); border-color: rgba(0,224,198,0.3); }
-  .badge.red { color: var(--danger); border-color: rgba(255,92,124,0.3); }
-  .alert {
-    background: rgba(255,92,124,0.08);
-    border: 1px solid rgba(255,92,124,0.2);
-    border-radius: 12px;
-    padding: 14px 16px;
-    font-size: 13px;
-    color: var(--danger);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
-  }
-  .alert.info {
-    background: rgba(124,92,255,0.08);
-    border-color: rgba(124,92,255,0.3);
-    color: var(--primary);
-  }
-  .btn {
-    padding: 10px 18px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-family: inherit;
-  }
-  .btn.primary { background: var(--primary); color: white; }
-  .btn.primary:hover { background: #6b4ee6; }
-  .btn.accent { background: var(--accent); color: #000; font-weight: 600; }
-  .btn.ghost {
-    background: transparent;
-    color: var(--muted);
-    border: 1px solid rgba(255,255,255,0.1);
-  }
-  .progress {
-    height: 6px;
-    background: rgba(255,255,255,0.08);
-    border-radius: 100px;
-    margin-top: 10px;
-    overflow: hidden;
-  }
-  .progress > div {
-    height: 100%;
-    border-radius: 100px;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-  }
-  table {
-    width: 100%;
-    font-size: 13px;
-    border-collapse: collapse;
-  }
-  th {
-    text-align: left;
-    padding: 10px 12px;
-    color: var(--muted);
-    font-weight: 500;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  td {
-    padding: 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-  }
-  tr:hover td { background: rgba(255,255,255,0.02); }
-  .hidden { display: none; }
-  @media (max-width: 1024px) {
-    .sidebar { display: none; }
-    .main { margin-left: 0; }
-    .grid-4, .grid-3 { grid-template-columns: repeat(2, 1fr); }
-  }
-</style>
-</head>
-<body>
-<canvas id="bg-canvas"></canvas>
-<div class="app">
-  <aside class="sidebar">
-    <div class="logo">TAXOS<span>AI</span></div>
-    <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>Dashboard</div>
-    <div class="nav-item" onclick="showPage('tax')"><span class="nav-icon">🧾</span>Tax</div>
-    <div class="nav-item" onclick="showPage('gst')"><span class="nav-icon">💸</span>GST</div>
-    <div class="nav-item" onclick="showPage('compliance')"><span class="nav-icon">🛡️</span>Compliance</div>
-    <div class="nav-item" onclick="showPage('invoices')"><span class="nav-icon">📑</span>Invoices</div>
-    <div class="nav-item" onclick="showPage('cf')"><span class="nav-icon">📈</span>Cash Flow</div>
-    <div class="nav-item" onclick="showPage('audit')"><span class="nav-icon">🔍</span>Audit</div>
-    <div class="nav-item" onclick="showPage('settings')"><span class="nav-icon">⚙️</span>Settings</div>
-  </aside>
-
-  <div class="main">
-    <div class="header">
-      <h1 id="page-title">Executive <span>Dashboard</span></h1>
-      <div class="user-pill">
-        <div class="avatar">PR</div>
-        <div>
-          <div style="font-weight:600;font-size:13px">Prabhat Roy</div>
-          <div style="font-size:11px;color:var(--muted)">Kurvy.me · Freelancer</div>
-        </div>
-      </div>
-    </div>
-
-    <div id="page-dashboard">
-      <div class="grid-4">
-        <div class="card">
-          <div class="card-label">Revenue (MTD)</div>
-          <div class="card-value">₹4.2L</div>
-          <div class="card-sub"><span class="up">↑ 12.4%</span> vs last month</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Tax Liability</div>
-          <div class="card-value">₹89K</div>
-          <div class="card-sub"><span class="down">↓ ₹8K</span> due in 18 days</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Cash Position</div>
-          <div class="card-value">₹3.8L</div>
-          <div class="card-sub">~<span class="up">142 days</span> runway</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Business Health</div>
-          <div class="card-value" style="color:var(--accent)">87/100</div>
-          <div class="card-sub"><span class="up">↑ 4 pts</span> this month</div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-title">Cash Flow Forecast</div>
-          <canvas id="cashflow-chart" height="180"></canvas>
-        </div>
-        <div class="card">
-          <div class="section-title">Revenue vs Expenses</div>
-          <canvas id="revenue-chart" height="180"></canvas>
-        </div>
-      </div>
-
-      <div class="grid-3">
-        <div class="card">
-          <div class="section-title">17 AI Modules</div>
-          <div class="module-grid" style="margin-top:12px">
-            <div class="module-card"><div class="module-icon">🧾</div><div class="module-name">Tax AI</div><div class="module-desc">Regime optimizer</div></div>
-            <div class="module-card"><div class="module-icon">💸</div><div class="module-name">GST AI</div><div class="module-desc">ITC reconciliation</div></div>
-            <div class="module-card"><div class="module-icon">🛡️</div><div class="module-name">Compliance</div><div class="module-desc">Auto alerts</div></div>
-            <div class="module-card"><div class="module-icon">📈</div><div class="module-name">CFO AI</div><div class="module-desc">Forecasting</div></div>
-            <div class="module-card"><div class="module-icon">🔍</div><div class="module-name">Auditor AI</div><div class="module-desc">Risk scoring</div></div>
-            <div class="module-card"><div class="module-icon">💼</div><div class="module-name">Business</div><div class="module-desc">Strategy</div></div>
-          </div>
-        </div>
-        <div class="card" style="grid-column: span 2">
-          <div class="section-title">Executive Summary</div>
-          <div style="font-size:13px;color:var(--muted);line-height:1.7">
-            <strong style="color:white">Headline:</strong> Revenue up 12.4% MTD. GST Q1 filing complete with <span style="color:var(--accent)">₹45K ITC secured</span>.<br/><br/>
-            <strong style="color:white">Key Risk:</strong> TDS payment of ₹89K due in 18 days.<br/><br/>
-            <strong style="color:white">Top Opportunity:</strong> Switching to new regime saves ₹2.1L annually.<br/><br/>
-            <strong style="color:white">Next Action:</strong> Expand D2C channel to Amazon — projected +₹1.8L/month.
-          </div>
-          <div style="margin-top:14px">
-            <button class="btn primary">View Full Report →</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="page-tax" class="hidden">
-      <div class="grid-2" style="margin-bottom:20px">
-        <div class="alert info">💡 Tax Optimization: Switching to New Regime saves <strong>₹2.1L</strong>/year. <button class="btn primary" style="margin-left:auto">Apply</button></div>
-        <div class="alert">⚠️ TDS payment <strong>₹89K</strong> due in 18 days. <button class="btn ghost" style="margin-left:auto">Schedule</button></div>
-      </div>
-      <div class="card">
-        <div class="section-title">Tax Comparison</div>
-        <table>
-          <tr><th>Regime</th><th>Annual Tax</th><th>Savings</th><th></th></tr>
-          <tr><td>Old Regime</td><td>₹12.4L</td><td style="color:var(--danger)">—</td><td><span class="badge">Current</span></td></tr>
-          <tr style="background:rgba(124,92,255,0.05)"><td>New Regime</td><td>₹10.3L</td><td style="color:var(--accent)">₹2.1L</td><td><span class="badge green">Recommended</span></td></tr>
-        </table>
-      </div>
-    </div>
-
-    <div id="page-gst" class="hidden">
-      <div class="grid-4" style="margin-bottom:20px">
-        <div class="card"><div class="card-label">GSTR-1</div><div class="card-value" style="color:var(--accent)">FILED</div><div class="card-sub">Q1 FY 2025-26</div></div>
-        <div class="card"><div class="card-label">GSTR-3B</div><div class="card-value" style="color:var(--accent)">FILED</div><div class="card-sub">Q1 FY 2025-26</div></div>
-        <div class="card"><div class="card-label">ITC Claimed</div><div class="card-value">₹1.2L</div><div class="card-sub"><span class="up">✓ Verified</span></div></div>
-        <div class="card"><div class="card-label">Mismatches</div><div class="card-value" style="color:var(--accent)">0</div><div class="card-sub">Zero risk</div></div>
-      </div>
-      <div class="card">
-        <div class="section-title">Vendor Compliance</div>
-        <table>
-          <tr><th>Vendor</th><th>GSTIN</th><th>ITC Eligible</th><th>Status</th></tr>
-          <tr><td>Fabric supplier #1</td><td>27AAECS1234R1Z5</td><td>₹45,000</td><td><span class="badge green">Verified</span></td></tr>
-          <tr><td>Shipping partner</td><td>27AAECS5678R1Z9</td><td>₹32,000</td><td><span class="badge green">Verified</span></td></tr>
-          <tr><td>Packaging supplier</td><td>27AAECS9012R1Z3</td><td>₹28,000</td><td><span class="badge">Pending</span></td></tr>
-        </table>
-      </div>
-    </div>
-
-    <div id="page-compliance" class="hidden">
-      <div class="grid-4" style="margin-bottom:20px">
-        <div class="card"><div class="card-label">Tax Compliance</div><div class="card-value" style="color:var(--accent)">95</div><div class="progress"><div style="width:95%"></div></div></div>
-        <div class="card"><div class="card-label">Payroll Compliance</div><div class="card-value" style="color:var(--accent)">88</div><div class="progress"><div style="width:88%"></div></div></div>
-        <div class="card"><div class="card-label">Corporate Compliance</div><div class="card-value" style="color:var(--accent)">91</div><div class="progress"><div style="width:91%"></div></div></div>
-        <div class="card"><div class="card-label">Overall Score</div><div class="card-value" style="color:var(--accent)">91</div><div class="progress"><div style="width:91%"></div></div></div>
-      </div>
-      <div class="card">
-        <div class="section-title">Upcoming Deadlines</div>
-        <table>
-          <tr><th>Due Date</th><th>Filing</th><th>Status</th><th>Action</th></tr>
-          <tr><td>July 10, 2025</td><td>GST Q1 Return</td><td><span class="badge green">Filed</span></td><td>✓ Done</td></tr>
-          <tr><td>July 15, 2025</td><td>TDS Payment (Q1)</td><td><span class="badge red">Urgent</span></td><td><button class="btn primary">Pay Now</button></td></tr>
-          <tr><td>July 31, 2025</td><td>Audit Report</td><td><span class="badge">In Progress</span></td><td><button class="btn ghost">Review</button></td></tr>
-          <tr><td>Aug 15, 2025</td><td>Income Tax Advance</td><td><span class="badge">Scheduled</span></td><td><button class="btn ghost">Details</button></td></tr>
-        </table>
-      </div>
-    </div>
-
-    <div id="page-invoices" class="hidden">
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-          <div class="section-title" style="margin:0">Recent Invoices</div>
-          <button class="btn primary">+ New Invoice</button>
-        </div>
-        <table>
-          <tr><th>Invoice #</th><th>Client</th><th>Amount</th><th>Date</th><th>Status</th></tr>
-          <tr><td>INV-001</td><td>Acme Corp</td><td>₹45,000</td><td>Jun 12</td><td><span class="badge green">Paid</span></td></tr>
-          <tr><td>INV-002</td><td>TechVista</td><td>₹28,500</td><td>Jun 14</td><td><span class="badge">Pending</span></td></tr>
-          <tr><td>INV-003</td><td>GreenLeaf</td><td>₹12,000</td><td>Jun 18</td><td><span class="badge green">Paid</span></td></tr>
-          <tr><td>INV-004</td><td>StartupX</td><td>₹65,000</td><td>Jun 20</td><td><span class="badge red">Overdue</span></td></tr>
-        </table>
-      </div>
-    </div>
-
-    <div id="page-cf" class="hidden">
-      <div class="grid-3" style="margin-bottom:20px">
-        <div class="card"><div class="card-label">30-Day Forecast</div><div class="card-value" style="color:var(--accent)">₹4.5L</div><div class="card-sub">Inflow projected</div></div>
-        <div class="card"><div class="card-label">Burn Rate</div><div class="card-value">₹1.2L/mo</div><div class="card-sub">Operating expenses</div></div>
-        <div class="card"><div class="card-label">Working Capital</div><div class="card-value">₹2.8L</div><div class="card-sub">Current surplus</div></div>
-      </div>
-      <div class="card">
-        <div class="section-title">12-Month Cash Flow Projection</div>
-        <canvas id="cf-chart" height="220"></canvas>
-      </div>
-    </div>
-
-    <div id="page-audit" class="hidden">
-      <div class="grid-2">
-        <div class="card">
-          <div class="section-title">Audit Risk Score</div>
-          <div style="display:flex;align-items:center;gap:20px;margin-top:10px">
-            <div style="flex:1">
-              <div style="font-size:40px;font-weight:700;color:var(--accent)">Low</div>
-              <div style="font-size:13px;color:var(--muted);margin-top:6px">Score: 12 / 100</div>
-            </div>
-            <div style="width:100px;height:100px;border-radius:50%;border:6px solid var(--accent);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700">12</div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="section-title">Findings</div>
-          <div style="font-size:13px;color:var(--muted);line-height:2">
-            ✓ No duplicate invoices<br/>
-            ✓ No fraud indicators<br/>
-            ✓ All expenses matched to receipts<br/>
-            ⚠ 3 pending vendor confirmations<br/>
-            ✓ Tax mismatches: 0
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="page-settings" class="hidden">
-      <div class="card" style="max-width:600px">
-        <div class="section-title">Business Profile</div>
-        <div style="font-size:13px;color:var(--muted);line-height:2.2">
-          Company: <strong style="color:white">Kurvy.me</strong><br/>
-          Industry: <strong style="color:white">E-commerce / Fashion D2C</strong><br/>
-          Country: <strong style="color:white">India</strong><br/>
-          Legal Structure: <strong style="color:white">Proprietorship</strong><br/>
-          GSTIN: <strong style="color:white">27AAXPQ1234R1Z5</strong><br/>
-          Turnover: <strong style="color:white">₹48L (FY 2024-25)</strong><br/>
-          Employees: <strong style="color:white">3</strong>
-        </div>
-        <div style="margin-top:16px">
-          <button class="btn primary">Edit Profile</button>
-          <button class="btn ghost" style="margin-left:8px">Connect Bank</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
-<script>
-function showPage(name) {
-  ['dashboard','tax','gst','compliance','invoices','cf','audit','settings'].forEach(p => {
-    document.getElementById('page-' + p).classList.toggle('hidden', p !== name);
-  });
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  event.currentTarget.classList.add('active');
-  const titles = {
-    dashboard: 'Executive <span>Dashboard</span>',
-    tax: 'Personal <span>Tax</span>',
-    gst: 'GST <span>Intelligence</span>',
-    compliance: 'Compliance <span>Center</span>',
-    invoices: 'Invoice <span>Manager</span>',
-    cf: 'Cash Flow <span>Forecast</span>',
-    audit: 'AI <span>Auditor</span>',
-    settings: 'Business <span>Settings</span>'
-  };
-  document.getElementById('page-title').innerHTML = titles[name] || 'TAXOS AI';
+function init(){
+  const saved = localStorage.getItem('taxos_user');
+  if(saved) state.user = JSON.parse(saved);
+  buildNav();
+  navigate(state.route);
+  if(!localStorage.getItem('taxos_data_seeded')){seedDemoData();localStorage.setItem('taxos_data_seeded','1')}
 }
-
-(function() {
-  const canvas = document.getElementById('bg-canvas');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x030308, 0.0008);
-  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.z = 30;
-  const geometries = [
-    new THREE.IcosahedronGeometry(4, 1),
-    new THREE.OctahedronGeometry(3, 0),
-    new THREE.TorusGeometry(3, 1, 16, 50),
-    new THREE.TetrahedronGeometry(3, 0),
-    new THREE.TorusKnotGeometry(2.5, 0.8, 100, 16),
-  ];
-  const color = [0x7c5cff, 0x00e0c6, 0x5b8def, 0xff5c7c];
-  const shapes = [];
-  for (let i = 0; i < 18; i++) {
-    const geo = geometries[Math.floor(Math.random() * geometries.length)];
-    const mat = new THREE.MeshStandardMaterial({ color: color[Math.floor(Math.random() * color.length)], roughness: 0.3, metalness: 0.7, wireframe: Math.random() > 0.5 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set((Math.random()-0.5)*60, (Math.random()-0.5)*60, (Math.random()-0.5)*40);
-    mesh.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, Math.random()*Math.PI);
-    mesh.userData = {
-      vx: (Math.random()-0.5)*0.003, vy: (Math.random()-0.5)*0.003, vz: (Math.random()-0.5)*0.002,
-      rx: (Math.random()-0.5)*0.008, ry: (Math.random()-0.5)*0.008, rz: (Math.random()-0.5)*0.004,
-    };
-    scene.add(mesh);
-    shapes.push(mesh);
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('collapsed')}
+function filterNav(q){const nav=document.getElementById('nav');nav.innerHTML='';buildNav(q)}
+function getFilter(q){if(!q) return Object.entries(ROUTES);return Object.entries(ROUTES).filter(([k,v])=>((v.title+(v.icon||'')).toLowerCase().includes(q.toLowerCase())))}
+function buildNav(filter=''){
+  const nav=document.getElementById('nav');
+  let html='';
+  let lastSection='';
+  getFilter(filter).forEach(([key, mod])=>{
+    if(mod.section!==lastSection){lastSection=mod.section;html+=`<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:12px 12px 6px">${mod.section}</div>`}
+    html+=`<a href="#" onclick="navigate('${key}')" class="${state.route===key?'active':''}"><span class="icon">${mod.icon}</span><span>${mod.title}</span></a>`
+  });
+  html+=`<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:12px 12px 6px;margin-top:8px">Modules</div>`;
+  Object.entries(MODULES).forEach(([key,mod])=>{
+    if(filter && !((mod.title+mod.icon).toLowerCase().includes(filter.toLowerCase()))) return;
+    html+=`<a href="#" onclick="navigate('${key}')" style="opacity:.7"><span class="icon">${mod.icon}</span><span>${mod.title}</span></a>`
+  });
+  if(state.user){html+=`<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;font-size:11px;color:var(--muted)">Signed in as ${state.user.email}</div>`}
+  nav.innerHTML=html;
+}
+function navigate(route){
+  state.route=route;
+  buildNav(document.querySelector('.search')?.value||'');
+  const page=pages[route] || pages['dashboard'];
+  document.getElementById('content').innerHTML=page();
+}
+function seedDemoData(){localStorage.setItem('taxos_revenue',JSON.stringify([450000,520000,480000,610000,590000,640000,680000,710000,690000,750000,800000,820000]));
+localStorage.setItem('taxos_expenses',JSON.stringify([320000,360000,340000,400000,390000,420000,430000,440000,440000,460000,470000,480000]));
+localStorage.setItem('taxos_invoices',JSON.stringify([
+  {id:'1',client:'Acme Corp',amount:125000,status:'paid',date:'2025-04-01'},
+  {id:'2',client:'Beta Ltd',amount:89000,status:'pending',date:'2025-04-05'},
+  {id:'3',client:'Gamma Inc',amount:210000,status:'overdue',date:'2025-03-15'},
+  {id:'4',client:'Delta Pvt',amount:67000,status:'paid',date:'2025-04-10'},
+]));
+localStorage.setItem('taxos_expenses_list',JSON.stringify([
+  {category:'Rent',amount:45000,date:'2025-04-01'},
+  {category:'Salary',amount:180000,date:'2025-04-01'},
+  {category:'Marketing',amount:32000,date:'2025-04-05'},
+  {category:'Software',amount:8500,date:'2025-04-10'},
+  {category:'Travel',amount:12000,date:'2025-04-12'},
+]));
+}
+function getRevenue(){return JSON.parse(localStorage.getItem('taxos_revenue')||'[]')}
+function getExpenses(){return JSON.parse(localStorage.getItem('taxos_expenses')||'[]')}
+function getInvoices(){return JSON.parse(localStorage.getItem('taxos_invoices')||'[]')}
+function currency(n){return '₹'+n.toLocaleString('en-IN')}
+function auth(){return state.user}
+function pages = {
+  dashboard(){
+    const revenue=getRevenue(), expenses=getExpenses();
+    const totalRevenue=revenue.reduce((a,b)=>a+b,0);
+    const totalExpenses=expenses.reduce((a,b)=>a+b,0);
+    const profit=totalRevenue-totalExpenses;
+    const tax=profit>0?profit*0.30:0;
+    return `<div class="kpi-grid">
+      <div class="kpi"><div class="label">Revenue</div><div class="value">${currency(totalRevenue)}</div><div class="change" style="color:#4ade80">+12.5% ↑</div></div>
+      <div class="kpi"><div class="label">Expenses</div><div class="value">${currency(totalExpenses)}</div><div class="change" style="color:#f87171">+8.2% ↑</div></div>
+      <div class="kpi"><div class="label">Net Profit</div><div class="value">${currency(profit)}</div><div class="change" style="color:#4ade80">+24.1% ↑</div></div>
+      <div class="kpi"><div class="label">Est. Tax</div><div class="value">${currency(tax)}</div><div class="change">New Regime</div></div>
+    </div>
+    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div><h3 style="font-size:14px;font-weight:600">Revenue vs Expenses</h3><p style="font-size:11px;color:var(--muted);margin-top:2px">Last 12 months</p></div>
+      <select onchange="alert('Range selected')" style="width:auto"><option>Last 12 months</option><option>Last 6 months</option><option>YTD</option></select>
+    </div>
+    <canvas id="mainChart" style="max-height:260px"></canvas></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div class="card"><h3 style="font-size:14px;font-weight:600;margin-bottom:12px">Compliance Score</h3>
+        <div style="display:flex;align-items:center;gap:16px"><div style="width:100px;height:100px;border-radius:50%;background:conic-gradient(#5e6ad2 85%, #26272a 85%);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700">85</div><div style="font-size:12px;color:var(--muted)">Good — 3 upcoming filings</div></div>
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span>GST</span><span style="color:#4ade80">Due Apr 20</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span>TDS Q4</span><span style="color:#facc15">Due May 31</span></div>
+          <div style="display:flex;justify-content:space-between;font-size:12px"><span>ITR</span><span style="color:var(--muted)">Jul 31</span></div>
+        </div>
+      </div>
+      <div class="card"><h3 style="font-size:14px;font-weight:600;margin-bottom:12px">AI Insights</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#5e6ad2">Tax Optimization:</strong> Switching to new regime saves ₹42,500/year</div>
+          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#4ade80">GST:</strong> Missed ITC of ₹18,240 detected — file in next GSTR-3B</div>
+          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#facc15">Cash Flow:</strong> Q3 burn rate increasing — consider early collections</div>
+          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#f87171">Alert:</strong> GST GSTR-1 due in 5 days — file before Apr 11</div>
+        </div>
+      </div>
+    </div>`;
+  },
+  tax(){
+    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:4px">Tax Analysis</h2><p style="color:var(--muted);font-size:12px;margin-bottom:16px">Compare old vs new regime · FY 2025-26</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div><label style="font-size:11px;color:var(--muted)">Total Income (₹)</label><input type="number" id="income" value="1200000" oninput="calcTax()"/></div>
+        <div><label style="font-size:11px;color:var(--muted)">Current Deductions (₹)</label><input type="number" id="ded" value="180000" oninput="calcTax()"/></div>
+      </div>
+      <div id="taxResult" class="card"></div></div>`;
+  },
+  gst(){
+    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">GST Reconciliation</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div><label style="font-size:11px;color:var(--muted)">GSTR-1 Upload</label><div style="border:2px dashed var(--border);padding:32px;text-align:center;border-radius:8px;color:var(--muted);font-size:12px">Drop CSV/Excel here<br>or <span style="color:var(--primary);cursor:pointer">browse</span></div></div>
+        <div><label style="font-size:11px;color:var(--muted)">Purchase Register</label><div style="border:2px dashed var(--border);padding:32px;text-align:center;border-radius:8px;color:var(--muted);font-size:12px">Drop CSV/Excel here<br>or <span style="color:var(--primary);cursor:pointer">browse</span></div></div>
+      </div>
+      <button class="btn" onclick="alert('Reconciling...')">Run Reconciliation</button>
+      <div id="gstResult"></div></div>`;
+  },
+  compliance(){
+    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Compliance Calendar</h2>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi"><div class="label">Compliance Score</div><div class="value">85/100</div><div class="change" style="color:#4ade80">Good</div></div>
+        <div class="kpi"><div class="label">Upcoming</div><div class="value">5</div><div class="change">Next 30 days</div></div>
+        <div class="kpi"><div class="label">Overdue</div><div class="value">0</div><div class="change" style="color:#4ade80">On track</div></div>
+      </div>
+      <table><thead><tr><th>Filing</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead><tbody>
+        <tr><td>GSTR-1 (Mar 2025)</td><td>Apr 11, 2025</td><td><span style="color:#facc15">Upcoming</span></td><td><button class="btn">File Now</button></td></tr>
+        <tr><td>GSTR-3B (Mar 2025)</td><td>Apr 20, 2025</td><td><span style="color:var(--muted)">15 days left</span></td><td><button class="btn-secondary">Schedule</button></td></tr>
+        <tr><td>TDS Q4 Payment</td><td>May 31, 2025</td><td><span style="color:#4ade80">On track</span></td><td><button class="btn-secondary">Remind</button></td></tr>
+        <tr><td>ITR Filing</td><td>Jul 31, 2025</td><td><span style="color:var(--muted)">102 days left</span></td><td><button class="btn-secondary">Prep</button></td></tr>
+      </tbody></table></div>`;
+  },
+  invoices(){
+    const invs=getInvoices();
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="font-size:18px;font-weight:600">Invoices</h2><button class="btn">+ New Invoice</button></div>
+      <table><thead><tr><th>Invoice</th><th>Client</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody>
+        ${invs.map(i=>`<tr><td>${i.id}</td><td>${i.client}</td><td>${currency(i.amount)}</td><td>${i.date}</td><td><span style="color:${i.status==='paid'?'#4ade80':i.status==='overdue'?'#f87171':'#facc15'}">${i.status}</span></td></tr>`).join('')}
+      </tbody></table></div>`;
+  },
+  cashflow(){
+    const rev=getRevenue(),exp=getExpenses();
+    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Cash Flow Forecast</h2>
+      <canvas id="cfChart" style="max-height:280px"></canvas></div>`;
+  },
+  audit(){
+    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Audit & Risk</h2>
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi"><div class="label">Risk Score</div><div class="value">92/100</div><div class="change" style="color:#4ade80">Low Risk</div></div>
+        <div class="kpi"><div class="label">Open Findings</div><div class="value">2</div><div class="change">Medium priority</div></div>
+        <div class="kpi"><div class="label">Last Scan</div><div class="value">Today</div><div class="change">Real-time</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+        <div style="padding:12px;background:#1a1c20;border-radius:6px;border-left:3px solid #facc15"><strong>Unusual expense detected</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Marketing spend 2.3σ above avg — review for duplicates</div></div>
+        <div style="padding:12px;background:#1a1c20;border-radius:6px;border-left:3px solid #f87171"><strong>Missing receipt</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">3 expenses >₹5k without supporting docs</div></div>
+      </div></div>`;
+  },
+  settings(){
+    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Settings</h2>
+      <div style="display:grid;gap:12px;max-width:400px">
+        <div><label style="font-size:11px;color:var(--muted)">Business Name</label><input value="Demo Enterprises Pvt Ltd"/></div>
+        <div><label style="font-size:11px;color:var(--muted)">GSTIN</label><input value="27AABCT1234R1ZP"/></div>
+        <div><label style="font-size:11px;color:var(--muted)">PAN</label><input value="AABCT1234R"/></div>
+        <div><label style="font-size:11px;color:var(--muted)">State</label><select><option>Maharashtra</option><option>Karnataka</option><option>Delhi</option><option>Tamil Nadu</option></select></div>
+        <div style="margin-top:8px"><button class="btn">Save Profile</button></div>
+      </div></div>`;
   }
-  const light = new THREE.PointLight(0x7c5cff, 800, 100);
-  light.position.set(10, 20, 20);
-  scene.add(light);
-  scene.add(new THREE.AmbientLight(0x222244, 2));
-  let mx = 0, my = 0;
-  document.addEventListener('mousemove', e => {
-    mx = (e.clientX / window.innerWidth - 0.5) * 2;
-    my = (e.clientY / window.innerHeight - 0.5) * 2;
-  });
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-  function animate() {
-    requestAnimationFrame(animate);
-    shapes.forEach(s => {
-      s.position.x += s.userData.vx; s.position.y += s.userData.vy; s.position.z += s.userData.vz;
-      s.rotation.x += s.userData.rx; s.rotation.y += s.userData.ry; s.rotation.z += s.userData.rz;
-      if (Math.abs(s.position.x) > 35) s.userData.vx *= -1;
-      if (Math.abs(s.position.y) > 35) s.userData.vy *= -1;
-      if (Math.abs(s.position.z) > 25) s.userData.vz *= -1;
+};
+
+function renderCharts(){
+  if(state.route==='dashboard'){
+    const ctx=document.getElementById('mainChart');
+    if(!ctx) return;
+    const rev=getRevenue(),exp=getExpenses(),labels=Array.from({length:12},(_,i)=>['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'][i]);
+    new Chart(ctx,{type:'line',data:{labels,datasets:[
+      {label:'Revenue',data:rev,borderColor:'#5e6ad2',backgroundColor:'rgba(94,106,210,.1)',fill:true,tension:.3,borderWidth:2},
+      {label:'Expenses',data:exp,borderColor:'#ff5c7c',backgroundColor:'transparent',tension:.3,borderWidth:2}
+    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#8a8f98',font:{size:11}}}},scales:{x:{ticks:{color:'#8a8f98',font:{size:10}},grid:{color:'#1f2125'}},y:{ticks:{color:'#8a8f98',font:{size:10},callback:v=>'₹'+v/1e5+'L'},grid:{color:'#1f2125'}}}}
     });
-    camera.position.x += (mx * 1.5 - camera.position.x) * 0.02;
-    camera.position.y += (-my * 1.5 - camera.position.y) * 0.02;
-    camera.lookAt(scene.position);
-    renderer.render(scene, camera);
+  } else if(state.route==='cashflow'){
+    const ctx=document.getElementById('cfChart');
+    if(!ctx)return;
+    const labels=['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+    new Chart(ctx,{type:'bar',data:{labels,datasets:[
+      {label:'Revenue',data:[82,85,88,91,89,93,95,98,100,102,105,108],backgroundColor:'#5e6ad2'},
+      {label:'Expenses',data:[72,74,73,76,77,78,79,80,81,82,83,84],backgroundColor:'#ff5c7c'}
+    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#8a8f98'}}},scales:{x:{ticks:{color:'#8a8f98'},grid:{color:'#1f2125'}},y:{ticks:{color:'#8a8f98',callback:v=>'₹'+v+'K'},grid:{color:'#1f2125'}}}});
   }
-  animate();
-})();
-
-function drawLineChart(id, data, color) {
-  const c = document.getElementById(id); if (!c) return;
-  const ctx = c.getContext('2d');
-  const w = c.width = c.offsetWidth * 2; const h = c.height = c.offsetHeight * 2;
-  ctx.scale(2, 2);
-  const W = w/2, H = h/2, max = Math.max(...data) * 1.2, step = W / (data.length - 1);
-  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
-  data.forEach((v, i) => { const x=i*step, y=H-(v/max)*(H-20)-10; i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
-  ctx.stroke();
-  const grad = ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0, color+'66'); grad.addColorStop(1, 'transparent');
-  ctx.lineTo((data.length-1)*step, H); ctx.lineTo(0, H); ctx.fillStyle = grad; ctx.fill();
-  ctx.fillStyle = '#94a3b8'; ctx.font = '10px Inter';
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  data.forEach((_, i) => ctx.fillText(months[i%12], i*step-4, H-2));
+}
+function calcTax(){
+  const income=parseFloat(document.getElementById('income').value)||0;
+  const ded=parseFloat(document.getElementById('ded').value)||0;
+  const old=taxOld(income,ded), nw=taxNew(income);
+  const save=old.total-nw.total;
+  document.getElementById('taxResult').innerHTML=`<div class="kpi-grid" style="grid-template-columns:1fr 1fr">
+    <div class="kpi"><div class="label">Old Regime</div><div class="value">${currency(old.total)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">Effective: ${old.eff}%</div></div>
+    <div class="kpi"><div class="label">New Regime</div><div class="value">${currency(nw.total)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">Effective: ${nw.ef}%</div></div>
+  </div><div style="margin-top:12px;padding:12px;background:#1a1c20;border-radius:6px;font-size:13px"><strong>Savings:</strong> ${save>0?currency(save)+' with new regime':'Same or better with old regime'}</div>`;
+}
+function taxOld(income,ded){
+  const taxable=Math.max(0,income-ded-50000);let tax=0;
+  if(taxable<=250000)tax=0;else if(taxable<=500000)tax=(taxable-250000)*.05;else if(taxable<=1e6)tax=12500+(taxable-500000)*.2;else tax=112500+(taxable-1e6)*.3;
+  let rebate=0,surcharge=0,cess=0;
+  if(income<=5e5)rebate=Math.min(tax,12500);
+  const after=max(0,tax-rebate);
+  if(taxable>5e6&&taxable<=1e7)surcharge=after*.1;else if(taxable>1e7)surcharge=after*.15;
+  cess=(after+surcharge)*.04;
+  return {total:Math.round(after+surcharge+cess),ef:income>0?Math.round((after+surcharge+cess)/income*100):0}
+}
+function taxNew(income){
+  let tax=0;if(income>4e5)tax+=(Math.min(income,8e5)-4e5)*.05;if(income>8e5)tax+=(Math.min(income,12e5)-8e5)*.1;if(income>12e5)tax+=(Math.min(income,16e5)-12e5)*.15;if(income>16e5)tax+=(Math.min(income,2e6)-16e5)*.2;if(income>2e6)tax+=(Math.min(income,24e5)-2e6)*.25;if(income>24e5)tax+=(income-24e5)*.3;
+  return {total:Math.round(tax*.96+tax*.04),ef:income>0?Math.round(tax/income*100):0}
 }
 
-function drawBarChart(id, a, b) {
-  const c = document.getElementById(id); if (!c) return;
-  const ctx = c.getContext('2d');
-  const w = c.width = c.offsetWidth * 2; const h = c.height = c.offsetHeight * 2;
-  ctx.scale(2, 2);
-  const W = w/2, H = h/2, max = Math.max(...a,...b)*1.2, bW = 16;
-  const months = ['Jan','Feb','Mar','Apr','May','Jun'];
-  a.forEach((v, i) => { const x=i*(W/a.length)+18, bh=(v/max)*(H-30); ctx.fillStyle='#7c5cff'; ctx.beginPath(); ctx.roundRect(x, H-bh-16, bW, bh, 3); ctx.fill(); ctx.fillStyle='#94a3b8'; ctx.font='10px Inter'; ctx.fillText(months[i%months.length], x-2, H-2); });
-  b.forEach((v, i) => { const x=i*(W/b.length)+36, bh=(v/max)*(H-30); ctx.fillStyle='#00e0c6'; ctx.beginPath(); ctx.roundRect(x, H-bh-16, bW, bh, 3); ctx.fill(); });
-}
+function init3D(){const c=document.getElementById('bg3d');if(!c)return;const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000),renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});renderer.setSize(innerWidth,innerHeight);c.appendChild(renderer.domElement);const geo=new THREE.IcosahedronGeometry(3,1),mat=new THREE.MeshBasicMaterial({color:0x5e6ad2,wireframe:true,transparent:true,opacity:.06}),mesh=new THREE.Mesh(geo,mat);scene.add(mesh);const geo2=new THREE.RingGeometry(1.5,2.5,32),mat2=new THREE.MeshBasicMaterial({color:0x00e0c6,transparent:true,opacity:.05,side:THREE.DoubleSide}),ring=new THREE.Mesh(geo2,mat2);ring.rotation.x=Math.PI/2.5;scene.add(ring);cam.position.z=6;function animate(){requestAnimationFrame(animate);mesh.rotation.y+=.0008;mesh.rotation.x+=.0004;ring.rotation.z+=.001;renderer.render(scene,cam)}animate();addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})}
 
-function drawCF() {
-  const c = document.getElementById('cf-chart'); if (!c) return;
-  const ctx = c.getContext('2d');
-  const w = c.width = c.offsetWidth * 2; const h = c.height = c.offsetHeight * 2;
-  ctx.scale(2, 2);
-  const W = w/2, H = h/2, data = [3.5,3.2,3.8,4.0,3.6,4.2,4.5,4.0,4.3,4.6,4.8,5.0], max = Math.max(...data)*1.15, step = W/(data.length-1);
-  ctx.strokeStyle = '#00e0c6'; ctx.lineWidth = 2.5; ctx.beginPath();
-  data.forEach((v, i) => { const x=i*step, y=H-(v/max)*(H-40)-20; i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y); });
-  ctx.stroke();
-  const grad = ctx.createLinearGradient(0,0,0,H); grad.addColorStop(0,'rgba(0,224,198,0.25)'); grad.addColorStop(1,'transparent');
-  ctx.lineTo((data.length-1)*step, H); ctx.lineTo(0, H); ctx.fillStyle = grad; ctx.fill();
-  ctx.fillStyle = '#94a3b8'; ctx.font = '10px Inter';
-  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].forEach((m,i) => ctx.fillText(m, i*step-6, H-2));
-}
-
-drawLineChart('cashflow-chart', [1.8,2.1,1.9,2.4,2.7,2.5,3.0,3.2,3.1,3.5,3.8,4.2], '#7c5cff');
-drawBarChart('revenue-chart', [3.2,3.4,3.1,3.6,3.8,4.2], [2.1,2.3,2.0,2.5,2.6,2.8]);
-setTimeout(drawCF, 100);
-</script>
-</body>
-</html>
+addEventListener('DOMContentLoaded',()=>{init();if(document.getElementById('mainChart'))setTimeout(renderCharts,50);setTimeout(init3D,100);
+  if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+});
+<\/script></body></html>
