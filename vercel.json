@@ -16,3 +16,4 @@
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
+// vercel cache bust 2026-06-21T10:45:00
