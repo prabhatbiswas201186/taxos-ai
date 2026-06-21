@@ -1,5 +1,15 @@
 {
-  "version": 2,
-  "builds": [{"src": "index.html", "use": "@vercel/static"}],
-  "routes": [{"src": "/(.*)", "dest": "/index.html"}]
+  "version": 3,
+  "framework": null,
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.11",
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  },
+  "rewrites": [
+    { "source": "/api/v1/(.*)", "destination": "/api/index.py" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }

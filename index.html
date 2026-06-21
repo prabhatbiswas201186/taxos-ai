@@ -75,7 +75,7 @@ function floatingChat(){
   return `<div class="chat-float glass rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden" id="chat-float">
     <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
       <div class="text-sm font-semibold">AI Chat / CFO</div>
-      <button onclick="toggleChat()" class="text-xs text-white/60 hover:text-white">−</button>
+      <button onclick="toggleChat()" class="text-xs text-white/60 hover:text-white">-</button>
     </div>
     <div id="chat-box" class="flex-1 overflow-y-auto space-y-3 p-3" style="max-height:360px"></div>
     <div class="p-3 border-t border-white/10">
@@ -105,26 +105,34 @@ function authForms(){
     <input id="auth-email" type="email" class="w-full" placeholder="Email"/>
     <input id="auth-phone" type="tel" class="w-full" placeholder="Phone (for OTP)"/>
     <button onclick="sendOtp()" class="btn-primary w-full rounded py-2 text-sm">Send OTP</button>
-    <div class="text-xs text-white/50 text-center">We’ll send a one-time code to your email or phone.</div>
+    <div class="text-xs text-white/50 text-center">We'll send a one-time code to your email or phone.</div>
+    <div class="text-center"><button onclick="forgotPassword()" class="text-xs text-indigo-300 hover:text-indigo-200">Forgot password?</button></div>
     <div id="otp-box" class="hidden space-y-2">
       <input id="auth-otp" type="text" class="w-full" placeholder="Enter OTP"/>
       <button onclick="verifyOtp()" class="btn-primary w-full rounded py-2 text-sm">Verify & Continue</button>
-    </div>
-    <div id="reset-box" class="hidden space-y-2">
-      <input id="reset-password" type="password" class="w-full" placeholder="New password"/>
-      <button onclick="resetPassword()" class="btn-secondary w-full rounded py-2 text-sm">Set password</button>
+      <div id="reset-box" class="hidden space-y-2">
+        <input id="reset-password" type="password" class="w-full" placeholder="New password"/>
+        <button onclick="setPassword()" class="btn-secondary w-full rounded py-2 text-sm">Set password</button>
+      </div>
     </div>
     <div id="auth-error" class="text-xs text-red-400 hidden"></div>
   </div>`;
+  // Check URL hash for password recovery
+  if(window.location.hash==='#recovery'){
+    $('#otp-box').classList.add('hidden');
+    $('#reset-box').classList.remove('hidden');
+  }
 }
 
 async function sendOtp(){
   const email=$('#auth-email').value;
   const phone=$('#auth-phone').value;
   if(!email&&!phone){showAuthError('Enter email or phone');return}
-  // use Supabase auth OTP
   if(sb){
-    const {error}=await sb.auth.signInWithOtp({email,phone});
+    const opts={};
+    if(email) opts.email=email;
+    if(phone) opts.phone=phone;
+    const {error}=await sb.auth.signInWithOtp(opts);
     if(error){showAuthError(error.message);return}
   }
   $('#otp-box').classList.remove('hidden');
@@ -141,14 +149,29 @@ async function verifyOtp(){
     if(error){showAuthError(error.message);return}
     state.user=data.user;
   }
-  appReady();
+  build($('#app'));
 }
 
-async function resetPassword(){
+async function forgotPassword(){
+  const email=$('#auth-email').value;
+  if(!email){showAuthError('Enter your email first');return}
   if(sb){
-    await sb.auth.updateUser({password:$('#reset-password').value});
+    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/#recovery'});
+    if(error){showAuthError(error.message);return}
   }
-  window.location.reload();
+  showAuthError('Password reset email sent. Check your inbox.');
+}
+
+async function setPassword(){
+  const pw=$('#reset-password').value;
+  if(!pw||pw.length<6){showAuthError('Password must be at least 6 characters');return}
+  if(sb){
+    const {error}=await sb.auth.updateUser({password:pw});
+    if(error){showAuthError(error.message);return}
+  }
+  window.location.hash='';
+  showAuthError('Password updated. You can now sign in.');
+  setTimeout(()=>location.reload(),1500);
 }
 
 function showAuthError(msg){const e=$('#auth-error');if(e){e.textContent=msg;e.classList.toggle('hidden',!msg)}}
@@ -157,7 +180,8 @@ function logout(){if(sb) sb.auth.signOut(); state.user=null; authForms()}
 
 function appReady(){
   if(state.user && state.user.user_metadata?.needs_password_reset){
-    $('#reset-box').classList.remove('hidden');
+    const box=$('#reset-box');
+    if(box) box.classList.remove('hidden');
   }
 }
 
@@ -179,13 +203,60 @@ function renderTax(root){renderModule(root,'Personal Tax AI',`<div class="grid g
   </div><div class="glass p-4 rounded"><div class="text-sm font-semibold mb-2">Optimization Opportunities</div><div id="tax-opps" class="space-y-2 text-sm"></div></div>
 </div>`)}
 
-async function runTax(){
-  const income=Number($('#tax-income').value)||0;const deductions={'80C':Number($('#tax-80c').value)||0};
+function clientTax(income, deductions, regime){
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  let taxable=Math.max(0, income - deductions - 50000);
+  let tax=0;
+  if(regime==='old'){
+    if(taxable<=250000) tax=0;
+    else if(taxable<=500000) tax=(taxable-250000)*0.05;
+    else if(taxable<=1000000) tax=12500+(taxable-500000)*0.20;
+    else if(taxable<=2000000) tax=112500+(taxable-1000000)*0.30;
+    else tax=412500+(taxable-2000000)*0.30;
+    let rebate=0;
+    if(income<=500000) rebate=Math.min(tax,12500);
+    let surcharge=0;
+    if(income>50000000) surcharge=0.37;
+    else if(income>20000000) surcharge=0.25;
+    else if(income>10000000) surcharge=0.15;
+    else if(income>5000000) surcharge=0.10;
+    tax=tax+(tax*surcharge);
+    tax=Math.max(0,tax-rebate);
+    return {regime:'Old',taxable_income:taxable,tax:Math.round(tax),rebate:Math.round(rebate),surcharge};
+  }else{
+    const std=75000;
+    taxable=Math.max(0, income - std);
+    if(taxable<=400000) tax=0;
+    else if(taxable<=800000) tax=(taxable-400000)*0.05;
+    else if(taxable<=1200000) tax=20000+(taxable-800000)*0.10;
+    else if(taxable<=1600000) tax=60000+(taxable-1200000)*0.15;
+    else if(taxable<=2000000) tax=120000+(taxable-1600000)*0.20;
+    else if(taxable<=2400000) tax=200000+(taxable-2000000)*0.25;
+    else tax=300000+(taxable-2400000)*0.30;
+    let rebate=0;
+    if(income<=1200000) rebate=Math.min(tax,25000);
+    let surcharge=0;
+    if(income>50000000) surcharge=0.37;
+    else if(income>20000000) surcharge=0.25;
+    else if(income>10000000) surcharge=0.15;
+    else if(income>5000000) surcharge=0.10;
+    tax=tax+(tax*surcharge);
+    tax=Math.max(0,tax-rebate);
+    return {regime:'New',taxable_income:taxable,tax:Math.round(tax),rebate:Math.round(rebate),surcharge};
+  }
+}
+
+function runTax(){
+  const income=Number($('#tax-income').value)||0;
+  const deductions=Number($('#tax-80c').value)||0;
   const out=$('#tax-result');const opps=$('#tax-opps');
   try{
-    const j=await api('/api/v1/tax/analyze',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',income,deductions,regime:'old',fy:'2025-26'})});
-    out.textContent=JSON.stringify(j.regimeComparison,null,2);
-    opps.innerHTML=(j.optimizationOpportunities||[]).map(o=>`<div class="glass p-2 rounded"><div class="font-semibold">${o.title}</div><div class="text-xs text-white/60">${o.description}</div></div>`).join('');
+    const old=clientTax(income,deductions,'old');
+    const new=clientTax(income,deductions,'new');
+    out.textContent=JSON.stringify({old,new},null,2);
+    const best=old.tax<new.tax?'Old Regime':'New Regime';
+    opps.innerHTML=`<div class="glass p-2 rounded"><div class="font-semibold">Recommended: ${best}</div><div class="text-xs text-white/60">Old: ₹${old.tax.toLocaleString()} | New: ₹${new.tax.toLocaleString()}</div></div>`+
+      `<div class="glass p-2 rounded"><div class="font-semibold">Taxable Income</div><div class="text-xs text-white/60">₹${old.taxable_income.toLocaleString()} after deductions</div></div>`;
   }catch(e){out.textContent='Error: '+e.message}
 }
 
@@ -265,14 +336,28 @@ function renderSettings(){const root=$('#page-content');root.innerHTML=`<section
 
 async function uploadDoc(){
   const file=$('#doc-file').files[0];if(!file){alert('Select a file');return}
-  const fd=new FormData();fd.append('file',file);fd.append('userId',state.user?.id||'u1');
-  try{const r=await fetch(API_BASE+'/documents/upload',{method:'POST',body:fd});const j=await r.json();$('#doc-result').textContent=JSON.stringify(j,null,2)}
-  catch(e){$('#doc-result').textContent='Error: '+e.message}}
-
+  if(!sb){alert('Supabase not connected');return}
+  const out=$('#doc-result');
+  out.textContent='Uploading…';
+  try{
+    const path=`documents/${state.user.id}/${Date.now()}_${file.name}`;
+    const {error:uploadError}=await sb.storage.from('user-documents').upload(path,file,{contentType:file.type});
+    if(uploadError) throw uploadError;
+    const {error:dbError}=await sb.from('documents').insert({user_id:state.user.id,file_name:file.name,file_path:path,file_size:file.size,mime_type:file.type});
+    if(dbError) throw dbError;
+    out.textContent='Uploaded successfully: '+file.name;
+  }catch(e){out.textContent='Error: '+e.message}
+}
 function connectBackend(){
   const el=$('#backend-status');
-  fetch(API_BASE+'/health').then(r=>r.json()).then(j=>{el.textContent='connected';el.style.color='#86efac';state.backend=true}).catch(()=>{el.textContent='offline';el.style.color='#fca5a5';state.backend=false})}
-
+  const apiOk=fetch(API_BASE+'/health').then(r=>r.ok).catch(()=>false);
+  const sbOk=sb?Promise.resolve(true):Promise.resolve(false);
+  Promise.all([apiOk,sbOk]).then(([api,sb])=>{
+    if(api){el.textContent='api connected';el.style.color='#86efac'}
+    else if(sb){el.textContent='supabase connected';el.style.color='#86efac'}
+    else{el.textContent='offline';el.style.color='#fca5a5'}
+  });
+}
 function navigate(id){
   state.page=id;
   document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.id===id));
@@ -285,12 +370,22 @@ function navigate(id){
 function build(root){
   root.innerHTML=nav()+header()+`<main class="min-h-screen"><section class="p-4 md:p-6" id="page-content"></section></main>`+floatingChat();
   const navEl=$('#nav');
-  if(navEl){navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`;
-  navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))}
-  connectBackend();navigate('dashboard');
+  if(navEl){navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`}
+  if(window.location.hash==='#recovery'){
+    const r=$('#page-content');
+    r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Set Password</h2>
+      <div class="glass p-4 rounded space-y-3">
+        <input id="reset-password" type="password" class="w-full" placeholder="New password"/>
+        <button onclick="setPassword()" class="btn-primary w-full rounded py-2 text-sm">Update Password</button>
+        <div id="auth-error" class="text-xs text-red-400 hidden"></div>
+      </div></section>`;
+  }
+  navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))
+  if(window.location.hash!=='#recovery') connectBackend();
+  navigate('dashboard');
 }
 
-function init(){const app=$('#app');if(state.user){build(app)}else{authForms()}}
+async function init(){const app=$('#app');if(sb){const{data:{session}}=await sb.auth.getSession();if(session){state.user=session.user}}if(state.user){build(app)}else{authForms()}}
 
 function toggleChatMobile(){const f=$('#chat-float');if(f){f.classList.toggle('hidden');const b=$('#chat-toggle');if(b){b.classList.toggle('hidden',!f.classList.contains('hidden'))}}}
 
