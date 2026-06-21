@@ -1,647 +1,286 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Taxos AI</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>TAXOS AI</title>
+<script src="https://cdn.tailwindcss.com"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg-primary: #0e1016;
-    --bg-surface: #15171c;
-    --bg-raised: #1c1f27;
-    --border: #262a35;
-    --text-primary: #e6e8ee;
-    --text-secondary: #8a8f9a;
-    --accent: #5e6ad2;
-    --accent-light: #8b93f7;
-    --success: #4ade80;
-    --warn: #fbbf24;
-    --danger: #f87171;
-    --tag-bg: #252840;
-    --tag-text: #c8cdf7;
-    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  }
-  body {
-    background: var(--bg-primary);
-    color: var(--text-primary);
-    font-family: var(--font);
-    height: 100vh;
-    overflow: hidden;
-    -webkit-font-smoothing: antialiased;
-  }
-  .app {
-    display: grid;
-    grid-template-rows: 56px 1fr 28px;
-    grid-template-columns: 260px 1fr 300px;
-    height: 100vh;
-  }
-  header {
-    grid-column: 1 / -1;
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 18px;
-  }
-  header h1 {
-    font-size: 16px;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  header h1 span.icon {
-    width: 20px; height: 20px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
-    border-radius: 5px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 800;
-    color: #fff;
-  }
-  .search {
-    flex: 1;
-    max-width: 520px;
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    outline: none;
-  }
-  .search:focus { border-color: var(--accent); }
-  .header-actions { margin-left: auto; display: flex; gap: 8px; }
-  .btn {
-    border: none;
-    background: var(--bg-raised);
-    color: var(--text-primary);
-    padding: 6px 14px;
-    border-radius: 5px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.15s;
-  }
-  .btn:hover { background: #262a35; }
-  .btn.primary { background: var(--accent); }
-  .btn.primary:hover { background: var(--accent-light); }
-  nav {
-    background: var(--bg-surface);
-    border-right: 1px solid var(--border);
-    padding: 10px 8px;
-  }
-  nav section { margin-bottom: 12px; }
-  nav section.title {
-    font-size: 10px;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    letter-spacing: 0.08em;
-    padding: 4px 10px 6px;
-    margin-top: 6px;
-  }
-  nav button {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-family: var(--font);
-    cursor: pointer;
-    width: 100%;
-    text-align: left;
-    padding: 5px 10px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  nav button:hover { background: var(--bg-raised); color: var(--text-primary); }
-  nav button.active { background: var(--bg-raised); color: var(--text-primary); font-weight: 600; }
-  nav button .count {
-    margin-left: auto;
-    background: var(--bg-primary);
-    color: var(--text-secondary);
-    font-size: 11px;
-    padding: 1px 6px;
-    border-radius: 3px;
-  }
-  .main {
-    overflow: auto;
-    background: var(--bg-primary);
-  }
-  .pane-header {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .pane-header h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
-  .pane-header .filters { margin-left: auto; display: flex; gap: 6px; }
-  .chip {
-    border: 1px solid var(--border);
-    background: var(--bg-raised);
-    color: var(--text-secondary);
-    font-size: 12px;
-    padding: 3px 10px;
-    border-radius: 50px;
-    cursor: pointer;
-  }
-  .chip:hover { border-color: var(--accent); color: var(--text-primary); }
-  .chip.active { background: var(--accent); border-color: var(--accent); color: white; }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  thead th {
-    text-align: left;
-    padding: 8px 16px;
-    color: var(--text-secondary);
-    font-weight: 500;
-    font-size: 12px;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
-    position: sticky;
-    top: 0;
-    background: var(--bg-primary);
-    z-index: 1;
-  }
-  tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.08s; }
-  tbody tr:hover { background: var(--bg-surface); }
-  td {
-    padding: 10px 16px;
-    vertical-align: middle;
-  }
-  td .title { font-weight: 500; }
-  td .sub { color: var(--text-secondary); font-size: 12px; }
-  .badge {
-    display: inline-row;
-    border-radius: 3px;
-    padding: 2px 8px;
-    font-size: 11px;
-    font-weight: 600;
-    background: var(--tag-bg);
-    color: var(--tag-text);
-  }
-  .badge.open { background: #252a12; color: var(--success); }
-  .badge.in-progress { background: #2a2410; color: var(--warn); }
-  .badge.done { background: #1f2226; color: var(--text-secondary); text-decoration: line-through; }
-  .priority-dot {
-    display: inline-block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    margin-right: 6px;
-  }
-  .priority-0 { background: var(--text-secondary); }
-  .priority-1 { background: var(--warn); }
-  .priority-2 { background: var(--danger); }
-  .priority-4 { background: var(--accent); }
-  .assigned { display: flex; align-items: center; gap: 6px; font-size: 13px; }
-  .avatar {
-    width: 20px; height: 20px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 700;
-    color: #fff;
-    background: #4b5563;
-  }
-  aside {
-    background: var(--bg-surface);
-    border-left: 1px solid var(--border);
-    padding: 14px;
-    overflow: auto;
-  }
-  aside h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
-  aside .field { margin-bottom: 14px; }
-  aside label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
-  aside .value, aside textarea, aside input {
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 6px 8px;
-    border-radius: 5px;
-    font-family: var(--font);
-    font-size: 13px;
-    width: 100%;
-    resize: vertical;
-  }
-  aside textarea { min-height: 90px; }
-  footer {
-    grid-column: 1 / -1;
-    background: var(--bg-surface);
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 14px;
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-secondary);
-  }
-  .kanban {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    padding: 16px;
-  }
-  .column {
-    background: var(--bg-surface);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    min-height: 120px;
-    display: flex;
-    flex-direction: column;
-  }
-  .column-head {
-    padding: 10px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border);
-    display: flex;
-    justify-content: space-between;
-  }
-  .column-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
-  .card {
-    background: var(--bg-raised);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 8px 10px;
-    cursor: pointer;
-  }
-  .card:hover { border-color: var(--accent); }
-  .card .title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-  .card .meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
-  .tabs { display: flex; gap: 4px; }
-  .tab {
-    background: var(--bg-raised);
-    border: 1px solid transparent;
-    color: var(--text-secondary);
-    padding: 3px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-  }
-  .tab.active { background: var(--bg-primary); color: var(--text-primary); border-color: var(--border); }
-  textarea, input { outline: none; }
-  textarea:focus, input:focus { border-color: var(--accent); }
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: #2c303a; border-radius: 4px; }
+  body { background:#08090a; color:#e5e7eb; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+  .glass { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
+  .sidebar-item.active { background: rgba(94,106,210,0.18); border-left: 2px solid #5e6ad2; }
+  input, select, textarea { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e5e7eb; }
+  .btn-primary { background:#5e6ad2; color:white; }
+  .btn-primary:hover { background:#4a56b5; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:999px; background:rgba(94,106,210,0.2); color:#a5b4fc; }
+  .kpi { background: #0c0d12; border:1px solid rgba(255,255,255,0.06); }
+  pre { white-space: pre-wrap; word-break: break-word; }
 </style>
 </head>
-<body>
-<div class="app">
-  <header>
-    <h1><span class="icon">T</span> Taxos AI</h1>
-    <input id="search" class="search" placeholder="Search by title, tag, or ID…" autocomplete="off" />
-    <div class="header-actions">
-      <button class="btn" onclick="exportCSV()">Export CSV</button>
-      <button class="btn primary" onclick="openCreate()">+ New issue</button>
-    </div>
-  </header>
-
-  <nav id="nav"></nav>
-
-  <section class="main" id="main"></section>
-
-  <aside id="detail"></aside>
-
-  <footer>
-    <span id="status-line">All systems nominal.</span>
-    <span>Linear-style SPA · v0.1.0</span>
-  </footer>
+<body class="min-h-screen">
+<div id="app" class="flex min-h-screen">
+  <aside class="w-64 glass border-r border-white/5 hidden md:flex flex-col">
+    <div class="p-4 text-lg font-bold tracking-wide">TAXOS<span class="text-indigo-400">.ai</span></div>
+    <nav class="px-2 space-y-1 text-sm" id="nav"></nav>
+    <div class="mt-auto p-4 text-xs text-white/50">v0.1 · India Tax AI</div>
+  </aside>
+  <main class="flex-1 min-w-0">
+    <header class="h-14 glass border-b border-white/5 flex items-center justify-between px-4">
+      <div class="font-semibold" id="page-title">Dashboard</div>
+      <div class="flex items-center gap-3">
+        <button class="text-xs glass px-3 py-1 rounded" onclick="connectBackend()">Backend: <span id="backend-status">checking…</span></button>
+        <button class="text-xs glass px-3 py-1 rounded" onclick="location.reload()">Reload</button>
+      </div>
+    </header>
+    <section class="p-4 md:p-6" id="page-content"></section>
+  </main>
 </div>
 
 <script>
-const state = {
-  project: 'all',
-  filter: 'all',
-  status: 'all',
-  query: '',
-  selected: null,
-};
+const API = 'http://127.0.0.1:8001';
+const modules = [
+  {id:'dashboard',name:'Dashboard',icon:'📊'}, {id:'tax',name:'Personal Tax AI',icon:'🧾'},
+  {id:'gst',name:'GST AI',icon:'💸'}, {id:'compliance',name:'Compliance AI',icon:'🛡️'},
+  {id:'cfo',name:'AI CFO',icon:'📈'}, {id:'audit',name:'AI Auditor',icon:'🔍'},
+  {id:'business',name:'Business Consultant',icon:'💼'}, {id:'fraud',name:'Fraud Detection',icon:'🚨'},
+  {id:'legal',name:'AI Legal Compliance',icon:'⚖️'}, {id:'hr',name:'AI HR Compliance',icon:'👥'},
+  {id:'fundraising',name:'AI Fundraising Advisor',icon:'💰'}, {id:'health',name:'AI Business Health',icon:'❤️'},
+  {id:'collections',name:'AI Collections Agent',icon:'📬'}, {id:'procurement',name:'AI Procurement',icon:'🛒'},
+  {id:'benefits',name:'Government Benefits',icon:'🏛️'}, {id:'global',name:'AI Global Expansion',icon:'🌍'},
+  {id:'chat',name:'AI Chat / CFO',icon:'💬'}, {id:'statements',name:'Financial Statements',icon:'📊'}
+];
+let state = { page:'dashboard', backend:false };
 
-const data = {
-  projects: [
-    { id: 'filing-2024', name: 'FY 2024 Filing', color: '#5e6ad2', icon: 'FaFolder' },
-    { id: 'filing-2025', name: 'FY 2025 Filing', color: '#4ade80', icon: 'FaFolder' },
-    { id: 'automation', name: 'Automation', color: '#fbbf24', icon: 'FaRobot' },
-    { id: 'compliance', name: 'Compliance', color: '#f87171', icon: 'Shield' },
-    { id: 'policy', name: 'Policy Engine', color: '#8b93f7', icon: 'Book' },
-  ],
-  users: [
-    { id: 'u1', name: 'Priya Sharma', initials: 'PS', color: '#2563eb' },
-    { id: 'u2', name: 'Alex Chen', initials: 'AC', color: '#059669' },
-    { id: 'u3', name: 'Jordan Lee', initials: 'JL', color: '#d97706' },
-    { id: 'u4', name: 'Samira Patel', initials: 'SP', color: '#7c3aed' },
-  ],
-  labels: [
-    { id: 'tax', name: 'Tax', color: '#5e6ad2' },
-    { id: 'accounting', name: 'Accounting', color: '#4ade80' },
-    { id: 'audit', name: 'Audit', color: '#fbbf24' },
-    { id: 'legal', name: 'Legal', color: '#f87171' },
-    { id: 'automation', name: 'Automation', color: '#8b93f7' },
-    { id: 'rnd', name: 'R&D', color: '#f472b6' },
-  ],
-  issues: [
-    { id: 'TAX-1', title: 'Reconcile Q1 federal journal entries', project: 'filing-2024', status: 'done', priority: 1,
-      assignee: 'u1', labels: ['tax','accounting'], due: '2024-04-15', desc: 'Ensure all Q1 federal filings match GL detail.' },
-    { id: 'TAX-2', title: 'Review state nexus for new NY revenue streams', project: 'filing-2024', status: 'in-progress', priority: 2,
-      assignee: 'u2', labels: ['tax','legal'], due: '2024-05-30', desc: 'Determine if NY nexus triggers for SaaS revenue.' },
-    { id: 'TAX-3', title: 'Finalize 1099-K reconciliation for marketplace sellers', project: 'filing-2024', status: 'open', priority: 4,
-      assignee: null, labels: ['accounting','audit'], due: '2024-06-10', desc: 'Match payment processor records to issued 1099-Ks.' },
-    { id: 'TAX-4', title: 'Build automated liability accrual workbook', project: 'automation', status: 'open', priority: 4,
-      assignee: 'u3', labels: ['automation','accounting'], due: '2024-07-01', desc: 'Use prior-year schedule to project FY25 liabilities.' },
-    { id: 'TAX-5', title: 'Consolidated return filing: prepare intercompany eliminations', project: 'filing-2025', status: 'open', priority: 4,
-      assignee: 'u4', labels: ['tax'], due: '2024-08-15', desc: 'Draft elimination entries for consolidated return.' },
-    { id: 'TAX-6', title: 'Update transfer pricing documentation for APAC ops', project: 'compliance', status: 'open', priority: 2,
-      assignee: 'u2', labels: ['legal','tax'], due: '2024-09-01', desc: 'Maintain contemporaneous docs per OECD guidance.' },
-    { id: 'TAX-7', title: 'Design policy engine for capturable tax engine rules', project: 'policy', status: 'in-progress', priority: 4,
-      assignee: 'u3', labels: ['automation','rnd'], due: '2025-01-15', desc: 'Architect rule DSL and versioned policy store.' },
-    { id: 'TAX-8', title: 'Run Q2 tax provision analysis', project: 'filing-2024', status: 'in-progress', priority: 1,
-      assignee: 'u1', labels: ['tax','accounting'], due: '2024-07-10', desc: 'Update provision model with Q2 income.' },
-    { id: 'TAX-9', title: 'Audit R&D credit study methodology', project: 'compliance', status: 'open', priority: 1,
-      assignee: null, labels: ['audit','rnd'], due: '2024-10-30', desc: 'Review qualified research expenses and federal credit.' },
-    { id: 'TAX-10', title: 'Automate sales tax rate lookup from jurisdiction list', project: 'automation', status: 'done', priority: 3,
-      assignee: 'u4', labels: ['automation'], due: '2024-06-01', desc: 'Pull latest rates and cache for SUT app.' },
-    { id: 'TAX-11', title: 'Draft FY24 ESOP valuation memo for tax credit', project: 'policy', status: 'open', priority: 3,
-      assignee: 'u1', labels: ['tax'], due: '2024-12-01', desc: 'Document valuation and eligibility for federal credit.' },
-    { id: 'TAX-12', title: 'Prepare intercompany AP/AR settlement schedule', project: 'filing-2025', status: 'in-progress', priority: 3,
-      assignee: 'u2', labels: ['accounting','audit'], due: '2024-09-15', desc: 'Final schedule before consolidated return draft.' },
-    { id: 'TAX-13', title: 'Build FY24 effective tax rate waterfall report', project: 'filing-2024', status: 'open', priority: 1,
-      assignee: null, labels: ['accounting','audit'], due: '2024-07-25', desc: 'Bridge GAAP to cash tax rate for footnote.' },
-    { id: 'TAX-14', title: 'Refactor entity mapping for multi-jurisdiction income', project: 'automation', status: 'open', priority: 2,
-      assignee: 'u3', labels: ['automation','rnd'], due: '2025-02-15', desc: 'Improve accuracy of split for allocable income.' },
-    { id: 'TAX-15', title: 'Set data retention policy for tax records', project: 'compliance', status: 'open', priority: 1,
-      assignee: 'u4', labels: ['legal'], due: '2024-11-01', desc: 'Outline retention timeframe and esoteric state rules.' },
-  ],
-};
-
-function fmtDate(d) {
-  if (!d) return '—';
-  const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
-  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-function daysUntil(d) {
-  if (!d) return null;
-  const diff = (new Date(d) - Date.now()) / 864e5;
-  return Math.ceil(diff);
-}
-function dayColor(d) {
-  const n = daysUntil(d);
-  if (n === null) return '';
-  if (n < -7) return 'var(--danger)';
-  if (n < 0) return 'var(--warn)';
-  if (n < 7) return 'var(--warn)';
-  return '';
-}
-function esc(s) { return String(s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
-
-function userById(id){
-  const u=data.users.find(u=>u.id===id);
-  return u?`<span class="assigned"><span class="avatar" style="background:${u.color}">${u.initials}</span>${esc(u.name)}</span>`:'Unassigned';
+function init() {
+  const nav = document.getElementById('nav');
+  nav.innerHTML = modules.map(m => `
+    <button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded flex items-center gap-2 hover:bg-white/5">
+      <span>${m.icon}</span><span>${m.name}</span>
+    </button>
+  `).join('');
+  nav.querySelectorAll('button').forEach(b => b.onclick = () => navigate(b.dataset.id));
+  navigate('dashboard');
+  connectBackend();
 }
 
-const counts = {
-  'all': data.issues.length,
-  'open': data.issues.filter(i=>i.status==='open').length,
-  'in-progress': data.issues.filter(i=>i.status==='in-progress').length,
-  'done': data.issues.filter(i=>i.status==='done').length,
-  'filing-2024': data.issues.filter(i=>i.project==='filing-2024').length,
-  'filing-2025': data.issues.filter(i=>i.project==='filing-2025').length,
-  'automation': data.issues.filter(i=>i.project==='automation').length,
-  'compliance': data.issues.filter(i=>i.project==='compliance').length,
-  'policy': data.issues.filter(i=>i.project==='policy').length,
-};
-
-function navProjects(){
-  const items = ['all','filing-2024','filing-2025','automation','compliance','policy'].map(k=>{
-    const name = k==='all'?'All projects': data.projects.find(p=>p.id===k)?.name || k;
-    return `<button class="${state.project===k?'active':''}" onclick="setProject('${k}')${k!=='all'?`;setStatus('all')`:''}">
-      ${k==='all'?'▸':''} ${name}<span class="count">${counts[k]||0}</span>
-    </button>`;
-  });
-  return `<section>
-    <div class="title">Projects</div>
-    <section>${items}</section>
-    <section class="title">Views</section>
-    ${['all','open','in-progress','done'].map(s=>
-      `<button class="${state.status===s?'active':''}" onclick="setStatus('${s}')">
-        ▸ ${s==='all'?'All':s==='in-progress'?'In Progress':s==='done'?'Done':s==='open'?'Open':s}
-        <span class="count">${counts[s]||0}</span>
-      </button>`
-    ).join('')}
-  </section>`;
+function navigate(id) {
+  state.page = id;
+  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+  const mod = modules.find(m => m.id === id) || modules[0];
+  document.getElementById('page-title').textContent = mod.name;
+  const out = document.getElementById('page-content');
+  const renderer = {
+    dashboard: renderDashboard, tax: renderTax, gst: renderGst, compliance: renderCompliance,
+    cfo: renderCfo, audit: renderAudit, chat: renderChat, statements: renderStatements, business: renderPlaceholder,
+    fraud: renderPlaceholder, legal: renderPlaceholder, hr: renderPlaceholder, fundraising: renderPlaceholder,
+    health: renderPlaceholder, collections: renderPlaceholder, procurement: renderPlaceholder,
+    benefits: renderPlaceholder, global: renderPlaceholder
+  }[mod.id] || renderPlaceholder;
+  renderer(out);
 }
 
-function listIssues(issues) {
-  if (!issues.length) {
-    return '<div class="empty-state"><p>No issues match.</p></div>';
+async function connectBackend() {
+  const el = document.getElementById('backend-status');
+  try {
+    const r = await fetch(API + '/health');
+    const j = await r.json();
+    state.backend = true;
+    el.textContent = 'connected';
+    el.style.color = '#86efac';
+  } catch (e) {
+    state.backend = false;
+    el.textContent = 'offline';
+    el.style.color = '#fca5a5';
   }
-  return `<table>
-    <thead>
-      <tr>
-        <th></th><th>ID</th><th>Title</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Due</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${issues.map(issue=>{
-        const project = data.projects.find(p=>p.id===issue.project);
-        const label = issue.labels.slice(0,1).map(l=>`<span class="badge ${issue.status}">${l}</span>`).join(' ');
-        return `<tr onclick="selectIssue('${issue.id}')">
-          <td><span class="priority-dot priority-${issue.priority}"></span></td>
-          <td><span class="sub">${issue.id}</span></td>
-          <td><div class="title">${esc(issue.title)}</div><div style="margin-top:4px">${label}</div></td>
-          <td><span class="badge ${issue.status}">${issue.status==='in-progress'?'In Progress':issue.status==='done'?'Done':'Open'}</span></td>
-          <td><span class="sub">P${issue.priority}</span></td>
-          <td>${userById(issue.assignee)}</td>
-          <td style="color:${dayColor(issue.due)}">${fmtDate(issue.due)}</td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>`;
 }
 
-function kanbanIssues(issues) {
-  const groups = { open:[], 'in-progress':[], done:[] };
-  issues.forEach(i=>{ if (groups[i.status]) groups[i.status].push(i); });
-  return `<div class="kanban">
-    ${Object.entries(groups).map(([status, items]) => `
-      <div class="column">
-        <div class="column-head">
-          <span>${status==='in-progress'?'In Progress':status==='done'?'Done':'Open'}</span>
-          <span class="count">${items.length}</span>
-        </div>
-        <div class="column-body">
-          ${items.map(i=>`<div class="card" onclick="selectIssue('${i.id}')">
-            <div class="title">${esc(i.title)}</div>
-            <div class="meta"><span>${i.id}</span><span>${fmtDate(i.due)}</span></div>
-          </div>`).join('')}
-        </div>
+async function api(path, opts = {}) {
+  if (!state.backend) throw new Error('Backend offline');
+  const r = await fetch(API + path, { headers: { 'Content-Type':'application/json' }, ...opts });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+function renderDashboard(root) {
+  root.innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Total Tax Liability</div><div class="text-2xl font-bold mt-1">₹1.17L</div><div class="text-xs text-white/50">FY 2025-26</div></div>
+      <div class="kpi p-4 rounded"><div class="text-xs text-white/60">GST Due This Month</div><div class="text-2xl font-bold mt-1">₹24,500</div><div class="text-xs text-white/50">GSTR-3B by 20th</div></div>
+      <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Compliance Score</div><div class="text-2xl font-bold mt-1">94/100</div><div class="text-xs text-emerald-300">Excellent</div></div>
+    </div>
+    <div class="mt-6 glass p-4 rounded">
+      <div class="text-sm font-semibold mb-2">Revenue vs Expenses (12M)</div>
+      <canvas id="dashChart" height="120"></canvas>
+    </div>
+  `;
+  setTimeout(() => {
+    const ctx = document.getElementById('dashChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        datasets: [
+          { label:'Revenue', data:[120,135,128,145,155,148,162,170,168,180,175,190], borderColor:'#5e6ad2', tension:0.4, fill:true, backgroundColor:'rgba(94,106,210,0.15)' },
+          { label:'Expenses', data:[80,85,90,88,95,92,98,105,102,110,108,115], borderColor:'#f87171', tension:0.4, fill:true, backgroundColor:'rgba(248,113,113,0.15)' }
+        ]
+      },
+      options: { responsive:true, plugins:{ legend:{ labels:{ color:'#e5e7eb' } } }, scales:{ x:{ ticks:{ color:'#9ca3af' }, grid:{ color:'rgba(255,255,255,0.05)' } }, y:{ ticks:{ color:'#9ca3af' }, grid:{ color:'rgba(255,255,255,0.05)' } } } }
+    });
+  }, 50);
+}
+
+function renderTax(root) {
+  root.innerHTML = `
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="glass p-4 rounded space-y-3">
+        <div class="text-sm font-semibold">Regime Calculator</div>
+        <label class="text-xs text-white/60">Annual Income (₹)</label>
+        <input id="tax-income" type="number" class="w-full rounded p-2" value="1200000"/>
+        <label class="text-xs text-white/60">80C Investments (₹)</label>
+        <input id="tax-80c" type="number" class="w-full rounded p-2" value="150000"/>
+        <button onclick="runTax()" class="btn-primary w-full rounded p-2">Calculate Tax</button>
+        <pre id="tax-result" class="text-xs bg-black/30 p-3 rounded overflow-auto h-48"></pre>
       </div>
-    `).join('')}
-  </div>`;
+      <div class="glass p-4 rounded">
+        <div class="text-sm font-semibold mb-2">Optimization Opportunities</div>
+        <div id="tax-opps" class="space-y-2 text-sm"></div>
+      </div>
+    </div>
+  `;
 }
 
-function detailView(issue) {
-  if (!issue) {
-    return `<aside>
-      <h3>Issue detail</h3>
-      <div class="empty-state" style="padding-top:30px"><p>Select an issue to view details.</p></div>
-    </aside>`;
+async function runTax() {
+  const income = Number(document.getElementById('tax-income').value) || 0;
+  const deductions = { '80C': Number(document.getElementById('tax-80c').value) || 0 };
+  const out = document.getElementById('tax-result');
+  const opps = document.getElementById('tax-opps');
+  try {
+    const j = await api('/api/v1/tax/analyze', { method:'POST', body: JSON.stringify({ userId:'u1', income, deductions, regime:'old', fy:'2025-26' }) });
+    out.textContent = JSON.stringify(j.regimeComparison, null, 2);
+    opps.innerHTML = (j.optimizationOpportunities || []).map(o => `<div class="glass p-2 rounded"><div class="font-semibold">${o.title}</div><div class="text-xs text-white/60">${o.description}</div></div>`).join('');
+  } catch (e) {
+    out.textContent = 'Error: ' + e.message;
   }
-  const project = data.projects.find(p=>p.id===issue.project);
-  return `<aside>
-    <h3>${esc(issue.id)}</h3>
-    <div class="field">
-      <label>Title</label>
-      <input id="dt-title" value="${esc(issue.title)}" />
+}
+
+function renderGst(root) {
+  root.innerHTML = `
+    <div class="glass p-4 rounded space-y-3">
+      <div class="text-sm font-semibold">GST Reconciliation</div>
+      <p class="text-xs text-white/60">Upload GSTR-1 / purchase register to auto-match ITC.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div><label class="text-xs text-white/60">GSTR-1 JSON</label><textarea id="gstr1" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
+        <div><label class="text-xs text-white/60">Purchase Register JSON</label><textarea id="purchases" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
+      </div>
+      <button onclick="runGst()" class="btn-primary w-full rounded p-2">Reconcile</button>
+      <pre id="gst-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
     </div>
-    <div class="field">
-      <label>Description</label>
-      <textarea id="dt-desc">${esc(issue.desc)}</textarea>
+  `;
+}
+
+async function runGst() {
+  const out = document.getElementById('gst-result');
+  try {
+    let gstr1 = [], purchases = [];
+    try { gstr1 = JSON.parse(document.getElementById('gstr1').value || '[]'); } catch {}
+    try { purchases = JSON.parse(document.getElementById('purchases').value || '[]'); } catch {}
+    const j = await api('/api/v1/gst/reconcile', { method:'POST', body: JSON.stringify({ userId:'u1', gstr1, purchaseRegister: purchases }) });
+    out.textContent = JSON.stringify(j, null, 2);
+  } catch (e) { out.textContent = 'Error: ' + e.message; }
+}
+
+function renderCompliance(root) {
+  root.innerHTML = `
+    <div class="glass p-4 rounded space-y-3">
+      <div class="text-sm font-semibold">Compliance Calendar</div>
+      <button onclick="loadCompliance()" class="btn-primary rounded px-3 py-1">Refresh</button>
+      <pre id="compliance-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
     </div>
-    <div class="field">
-      <label>Status</label>
-      <select id="dt-status" style="background:var(--bg-raised);color:var(--text-primary);border:1px solid var(--border);padding:6px;border-radius:5px;width:100%;">
-        ${['open','in-progress','done'].map(s=>`<option value="${s}" ${issue.status===s?'selected':''}>${s==='in-progress'?'In Progress':s==='done'?'Done':'Open'}</option>`).join('')}
-      </select>
+  `;
+}
+
+async function loadCompliance() {
+  const out = document.getElementById('compliance-result');
+  try {
+    const j = await api('/api/v1/compliance/check', { method:'POST', body: JSON.stringify({ userId:'u1', businessId:'b1' }) });
+    out.textContent = JSON.stringify(j, null, 2);
+  } catch (e) { out.textContent = 'Error: ' + e.message; }
+}
+
+function renderCfo(root) {
+  root.innerHTML = `
+    <div class="glass p-4 rounded space-y-3">
+      <div class="text-sm font-semibold">Cash Flow Forecast</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div><label class="text-xs text-white/60">Revenue JSON</label><textarea id="cf-rev" class="w-full rounded p-2 h-28" placeholder='[{"amount":150000}]'></textarea></div>
+        <div><label class="text-xs text-white/60">Expenses JSON</label><textarea id="cf-exp" class="w-full rounded p-2 h-28" placeholder='[{"amount":90000}]'></textarea></div>
+      </div>
+      <button onclick="runCashflow()" class="btn-primary w-full rounded p-2">Forecast</button>
+      <pre id="cf-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
     </div>
-    <div class="field">
-      <label>Priority (1–4)</label>
-      <input type="number" id="dt-priority" value="${issue.priority}" min="1" max="4" />
+  `;
+}
+
+async function runCashflow() {
+  const out = document.getElementById('cf-result');
+  try {
+    let rev = [], exp = [];
+    try { rev = JSON.parse(document.getElementById('cf-rev').value || '[]'); } catch {}
+    try { exp = JSON.parse(document.getElementById('cf-exp').value || '[]'); } catch {}
+    const j = await api('/api/v1/cashflow/forecast', { method:'POST', body: JSON.stringify({ userId:'u1', revenueHistory: rev, expenseHistory: exp }) });
+    out.textContent = JSON.stringify(j, null, 2);
+  } catch (e) { out.textContent = 'Error: ' + e.message; }
+}
+
+function renderAudit(root) {
+  root.innerHTML = `
+    <div class="glass p-4 rounded space-y-3">
+      <div class="text-sm font-semibold">AI Auditor</div>
+      <button onclick="loadAudit()" class="btn-primary rounded px-3 py-1">Scan</button>
+      <pre id="audit-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
     </div>
-    <div class="field">
-      <label>Due Date</label>
-      <input type="date" id="dt-due" value="${issue.due||''}" />
+  `;
+}
+
+async function loadAudit() {
+  const out = document.getElementById('audit-result');
+  try {
+    const j = await api('/api/v1/audit/scan', { method:'POST', body: JSON.stringify({ userId:'u1', businessId:'b1' }) });
+    out.textContent = JSON.stringify(j, null, 2);
+  } catch (e) { out.textContent = 'Error: ' + e.message; }
+}
+
+function renderChat(root) {
+  root.innerHTML = `
+    <div class="glass p-4 rounded space-y-3">
+      <div class="text-sm font-semibold">AI Chat / CFO</div>
+      <textarea id="chat-msg" class="w-full rounded p-2 h-24" placeholder="Ask about tax, GST, compliance..."></textarea>
+      <button onclick="sendChat()" class="btn-primary rounded px-3 py-1">Send</button>
+      <pre id="chat-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
     </div>
-    <div class="field">
-      <label>Assignee</label>
-      <select id="dt-assignee" style="background:var(--bg-raised);color:var(--text-primary);border:1px solid var(--border);padding:6px;border-radius:5px;width:100%;">
-        <option value="">— Unassigned —</option>
-        ${data.users.map(u=>`<option value="${u.id}" ${issue.assignee===u.id?'selected':''}>${u.name}</option>`).join('')}
-      </select>
-    </div>
-    <div class="field">
-      <label>Labels</label>
-      <input id="dt-labels" value="${issue.labels.join(', ')}" placeholder="comma,separated" />
-    </div>
-    <button class="btn primary" style="width:100%;margin-top:6px;" onclick="saveIssue('${issue.id}')">Save</button>
-    <button class="btn" style="width:100%;margin-top:6px;" onclick="deleteIssue('${issue.id}')">Delete</button>
-  </aside>`;
+  `;
 }
 
-function setProject(project) {
-  state.project = project;
-  state.selected = null;
-  render();
-}
-function setStatus(status) {
-  state.status = status;
-  state.selected = null;
-  render();
-}
-function selectIssue(id) {
-  state.selected = state.selected===id ? null : id;
-  render();
+async function sendChat() {
+  const out = document.getElementById('chat-result');
+  const msg = document.getElementById('chat-msg').value;
+  try {
+    const j = await api('/api/v1/chat', { method:'POST', body: JSON.stringify({ userId:'u1', message: msg }) });
+    out.textContent = JSON.stringify(j, null, 2);
+  } catch (e) { out.textContent = 'Error: ' + e.message; }
 }
 
-function filtered() {
-  const q = state.query.trim().toLowerCase();
-  return data.issues.filter(i => {
-    const projOk = state.project === 'all' || i.project === state.project;
-    const statusOk = state.status === 'all' || i.status === state.status;
-    const qOk = !q || i.title.toLowerCase().includes(q) || i.id.toLowerCase().includes(q) || i.labels.some(l=>l.includes(q));
-    return projOk && statusOk && qOk;
-  });
+function renderStatements(root) {
+  root.innerHTML = `<div class="glass p-4 rounded">Financial Statements module. Connect backend for live statements.</div>`;
 }
 
-function render() {
-  const issues = filtered();
-  document.getElementById('nav').innerHTML = navProjects();
-  const main = document.getElementById('main');
-  const headers = `<div class="pane-header">
-    <h2>${state.status==='in-progress'?'In Progress questions':state.status==='done'?'Done questions':state.project==='all'?'All questions':(data.projects.find(p=>p.id===state.project)||{}).name||state.project}</h2>
-    <div class="filters">
-      ${['open','in-progress','done'].map(s=>`<button class="chip ${state.status===s?'active':''}" onclick="setStatus('${s}')">${s==='in-progress'?'In Progress':s}</button>`).join('')}
-    </div>
-  </div>`;
-  if (state.status==='done' && issues.some(i=>i.status==='done')) {
-    // visual grouping simplified: show list
-  }
-  main.innerHTML = headers + listIssues(issues);
-  document.getElementById('detail').innerHTML = detailView(data.issues.find(i=>i.id===state.selected));
-  document.getElementById('status-line').textContent = `Showing ${issues.length} of ${data.issues.length} issues · Project: ${state.project==='all'?'All projects':data.projects.find(p=>p.id===state.project)?.name||state.project}`;
+function renderPlaceholder(root) {
+  const mod = modules.find(m => m.id === state.page) || {icon:'📦', name:'Module'};
+  root.innerHTML = `<div class="glass p-4 rounded">${mod.icon} ${mod.name} module ready. Connect backend for live data.</div>`;
 }
 
-function saveIssue(id) {
-  const issue = data.issues.find(i=>i.id===id);
-  if (!issue) return;
-  const t = document.getElementById('dt-title').value.trim();
-  if (t) issue.title = t;
-  issue.desc = document.getElementById('dt-desc').value.trim();
-  issue.status = document.getElementById('dt-status').value;
-  issue.priority = Math.max(1, Math.min(4, parseInt(document.getElementById('dt-priority').value||'1',10)));
-  issue.due = document.getElementById('dt-due').value || null;
-  issue.assignee = document.getElementById('dt-assignee').value || null;
-  issue.labels = document.getElementById('dt-labels').value.split(',').map(s=>s.trim()).filter(Boolean);
-  render();
-}
-
-function deleteIssue(id) {
-  if (!confirm(`Delete ${id}?`)) return;
-  data.issues = data.issues.filter(i=>i.id!==id);
-  state.selected = null;
-  render();
-}
-
-function openCreate() {
-  const pid = state.project==='all'?'filing-2024':state.project;
-  const n = data.issues.filter(i=>i.project===pid).length + 1;
-  const newId = `TAX-${data.issues.map(i=>parseInt(i.id.split('-')[1],10)).reduce((a,b)=>Math.max(a,b),0)+1}`;
-  const issue = { id: newId, title: 'Untitled question', project: pid, status:'open', priority:3, assignee:null, labels:[], due:null, desc:'' };
-  data.issues.unshift(issue);
-  state.selected = newId;
-  render();
-  setTimeout(()=>{ const el = document.getElementById('dt-title'); if(el){ el.focus(); el.select(); } }, 50);
-}
-
-function exportCSV() {
-  const issues = filtered();
-  const rows = [['ID','Title','Status','Priority','Assignee','Due','Labels','Project']];
-  issues.forEach(i=>{
-    rows.push([
-      i.id, i.title, i.status, i.priority,
-      (data.users.find(u=>u.id===i.assignee)||{}).name||'',
-      i.due||'', i.labels.join(';'), data.projects.find(p=>p.id===i.project)?.name||i.project
-    ]);
-  });
-  const blob = new Blob([rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'taxos-ai-questions.csv'; a.click();
-  URL.revokeObjectURL(url);
-}
-
-document.getElementById('search').addEventListener('input', e=>{ state.query = e.target.value; render(); });
-
-render();
-</script>
+init();
+<\/script>
 </body>
 </html>
