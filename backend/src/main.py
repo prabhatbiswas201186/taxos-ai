@@ -668,7 +668,7 @@ def get_expenses(user_id: str, category: Optional[str] = None):
     total = sum(e["amount"] for e in user_exp)
     return {"expenses": user_exp, "total": total, "count": len(user_exp)}
 
-@app.post("/api/v1/audit/scan")
+@app.post("/api/v1/audit/analyze")
 def audit_scan(userId: str, businessId: str):
     user_invs = invoices.get(userId, [])
     user_exp = expenses.get(userId, [])

@@ -185,7 +185,7 @@ async function runGst() {
     let gstr1 = [], purchases = [];
     try { gstr1 = JSON.parse(document.getElementById('gstr1').value || '[]'); } catch {}
     try { purchases = JSON.parse(document.getElementById('purchases').value || '[]'); } catch {}
-    const j = await api('/api/v1/gst/reconcile', { method:'POST', body: JSON.stringify({ userId:'u1', gstr1, purchaseRegister: purchases }) });
+    const j = await api('/api/v1/gst/reconcile', { method:'POST', body: JSON.stringify({ userId:'u1', gstr1, gstr3b: [], purchaseRegister: purchases }) });
     out.textContent = JSON.stringify(j, null, 2);
   } catch (e) { out.textContent = 'Error: ' + e.message; }
 }
@@ -203,7 +203,7 @@ function renderCompliance(root) {
 async function loadCompliance() {
   const out = document.getElementById('compliance-result');
   try {
-    const j = await api('/api/v1/compliance/check', { method:'POST', body: JSON.stringify({ userId:'u1', businessId:'b1' }) });
+    const j = await api('/api/v1/compliance/check', { method:'POST', body: JSON.stringify({ userId:'u1', businessId:'b1', filings:{} }) });
     out.textContent = JSON.stringify(j, null, 2);
   } catch (e) { out.textContent = 'Error: ' + e.message; }
 }
@@ -246,7 +246,7 @@ function renderAudit(root) {
 async function loadAudit() {
   const out = document.getElementById('audit-result');
   try {
-    const j = await api('/api/v1/audit/scan?userId=u1&businessId=b1', { method:'POST' });
+    const j = await api('/api/v1/audit/analyze?userId=u1&businessId=b1', { method:'POST' });
     out.textContent = JSON.stringify(j, null, 2);
   } catch (e) { out.textContent = 'Error: ' + e.message; }
 }
