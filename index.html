@@ -21,8 +21,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 const SUPABASE_URL='https://kjkwruzkfrxfwaokzqbs.supabase.co';
-// PASTE YOUR SUPABASE ANON/PUBLIC KEY HERE. Find it in Supabase Dashboard > Settings > API > anon key.
-const SUPABASE_ANON_KEY='PASTE_YOUR_SUPABASE_ANON_KEY_HERE';
+const SUPABASE_ANON_KEY='sb_publishable_jA8qt1LWb95oQYnUh-59fA_klPe8kXE';
 let sb=null;
 try{if(window.supabase&&typeof window.supabase.createClient==='function'){sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}}catch(e){sb=null}
 const API_BASE='/api/v1';
