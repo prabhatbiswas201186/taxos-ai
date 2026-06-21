@@ -11,7 +11,7 @@ def check(name, ok, detail=""):
     print(f"[{status}] {name}" + (f" — {detail}" if detail else ""))
 
 # 1. Health
-r = requests.get(f"{API}/health", timeout=15)
+r = requests.get(f"{BASE}/health", timeout=15)
 check("health", r.status_code == 200, f"status={r.status_code}")
 
 # 2. Modules
@@ -38,9 +38,9 @@ check("cashflow/forecast", r.status_code == 200 and "projections" in r.json(), f
 r = requests.post(f"{API}/chat", json={"userId":"u1","message":"test hello","module":"general"}, timeout=15)
 check("chat (json body)", r.status_code == 200 and "response" in r.json(), f"status={r.status_code} body={r.text[:80]}")
 
-# 8. Chat endpoint - query params (fallback)
+# 8. Chat endpoint - query params (backend now only accepts JSON body, so this should not be 200 for production)
 r = requests.post(f"{API}/chat?userId=u1&message=test&module=general", timeout=15)
-check("chat (query params)", r.status_code == 200 and "response" in r.json(), f"status={r.status_code}")
+check("chat (query params)", r.status_code != 200, f"status={r.status_code} (expected non-200, endpoint uses JSON body)")
 
 # 9. Regulations
 r = requests.get(f"{API}/regulations/india", timeout=15)
@@ -65,6 +65,22 @@ check("supabase documents readable", r.status_code == 200, f"status={r.status_co
 # 14. Supabase chat_history readable?
 r = requests.get("https://kjkwruzkfrxfwaokzqbs.supabase.co/rest/v1/chat_history?select=count", headers={"apikey":"sb_publishable_jA8qt1LWb95oQYnUh-59fA_klPe8kXE","Authorization":"Bearer sb_publishable_jA8qt1LWb95oQYnUh-59fA_klPe8kXE"}, timeout=15)
 check("supabase chat_history readable", r.status_code == 200, f"status={r.status_code} body={r.text[:120]}")
+
+# 15. Admin login
+r = requests.post(f"{API}/admin/login", json={"token":"change-me-admin-token"}, timeout=15)
+check("admin/login", r.status_code == 200, f"status={r.status_code}")
+
+# 16. Admin users list (needs auth)
+r = requests.get(f"{API}/admin/users", headers={"Authorization":"Bearer change-me-admin-token"}, timeout=15)
+check("admin/users", r.status_code == 200 and "users" in r.json(), f"status={r.status_code}")
+
+# 17. Admin stats
+r = requests.get(f"{API}/admin/stats", headers={"Authorization":"Bearer change-me-admin-token"}, timeout=15)
+check("admin/stats", r.status_code == 200 and "totalUsers" in r.json(), f"status={r.status_code}")
+
+# 18. Admin config
+r = requests.get(f"{API}/admin/config", headers={"Authorization":"Bearer change-me-admin-token"}, timeout=15)
+check("admin/config", r.status_code == 200 and "modules" in r.json(), f"status={r.status_code}")
 
 passed = sum(1 for _, s, _ in results if s == "PASS")
 failed = sum(1 for _, s, _ in results if s == "FAIL")

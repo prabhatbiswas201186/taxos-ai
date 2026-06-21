@@ -892,6 +892,126 @@ def list_modules():
         ]
     }
 
+# === ADMIN PANEL ===
+ADMIN_TOKEN=os.environ.get("ADMIN_TOKEN","change-me-admin-token")
+
+class AdminLoginRequest(BaseModel):
+    token: str
+
+class UserUpdateRequest(BaseModel):
+    userId: str
+    subscription: Optional[str] = None
+    activeModules: Optional[List[str]] = None
+    isActive: Optional[bool] = None
+
+class ConfigUpdateRequest(BaseModel):
+    moduleAccess: Optional[Dict[str, List[str]]] = None
+    globalPricing: Optional[Dict[str, Any]] = None
+    maintenanceMode: Optional[bool] = None
+
+def require_admin(auth_header: Optional[str] = None):
+    token = (auth_header or "").replace("Bearer ", "")
+    if token != ADMIN_TOKEN:
+        raise HTTPException(401, "Invalid admin token")
+    return True
+
+@app.post("/api/v1/admin/login")
+def admin_login(req: AdminLoginRequest):
+    if req.token != ADMIN_TOKEN:
+        raise HTTPException(401, "Invalid admin token")
+    return {"admin": True, "token": ADMIN_TOKEN}
+
+@app.get("/api/v1/admin/users")
+def admin_list_users(authorization: Optional[str] = None):
+    require_admin(authorization)
+    result = []
+    for uid, user in users.items():
+        profile = profiles.get(uid, {})
+        result.append({
+            "id": uid,
+            "email": user.get("email"),
+            "name": profile.get("name"),
+            "createdAt": user.get("createdAt"),
+            "subscription": profile.get("subscription", "free"),
+            "isActive": profile.get("isActive", True),
+            "activeModules": profile.get("activeModules", []),
+        })
+    return {"users": result}
+
+@app.post("/api/v1/admin/users/update")
+def admin_update_user(req: UserUpdateRequest, authorization: Optional[str] = None):
+    require_admin(authorization)
+    if req.userId not in profiles:
+        profiles[req.userId] = {"id": req.userId}
+    p = profiles[req.userId]
+    if req.subscription is not None:
+        p["subscription"] = req.subscription
+    if req.activeModules is not None:
+        p["activeModules"] = req.activeModules
+    if req.isActive is not None:
+        p["isActive"] = req.isActive
+    return {"success": True, "profile": p}
+
+@app.get("/api/v1/admin/stats")
+def admin_stats(authorization: Optional[str] = None):
+    require_admin(authorization)
+    total_users = len(users)
+    total_profiles = len(profiles)
+    active = sum(1 for p in profiles.values() if p.get("isActive", True))
+    paid = sum(1 for p in profiles.values() if p.get("subscription") in ["pro", "enterprise"])
+    free = total_profiles - paid
+    module_usage = {}
+    for p in profiles.values():
+        for m in p.get("activeModules", []):
+            module_usage[m] = module_usage.get(m, 0) + 1
+    return {
+        "totalUsers": total_users,
+        "totalProfiles": total_profiles,
+        "activeUsers": active,
+        "paidUsers": paid,
+        "freeUsers": free,
+        "moduleUsage": module_usage,
+    }
+
+@app.get("/api/v1/admin/config")
+def admin_get_config(authorization: Optional[str] = None):
+    require_admin(authorization)
+    return {
+        "modules": [
+            {"id": m["id"], "name": m["name"], "enabled": True, "requiresSubscription": "free" if m["id"] in ["dashboard","tax","compliance"] else "pro"}
+            for m in [
+                {"id": "dashboard", "name": "Dashboard"},
+                {"id": "tax", "name": "Personal Tax AI"},
+                {"id": "gst", "name": "GST AI"},
+                {"id": "compliance", "name": "Compliance AI"},
+                {"id": "cfo", "name": "AI CFO"},
+                {"id": "audit", "name": "AI Auditor"},
+                {"id": "business", "name": "Business Consultant"},
+                {"id": "fraud", "name": "Fraud Detection"},
+                {"id": "legal", "name": "AI Legal Compliance"},
+                {"id": "hr", "name": "AI HR Compliance"},
+                {"id": "fundraising", "name": "AI Fundraising Advisor"},
+                {"id": "health", "name": "AI Business Health"},
+                {"id": "collections", "name": "AI Collections Agent"},
+                {"id": "procurement", "name": "AI Procurement"},
+                {"id": "benefits", "name": "Government Benefits"},
+                {"id": "global", "name": "AI Global Expansion"},
+                {"id": "statements", "name": "Financial Statements"},
+            ]
+        ],
+        "subscriptionTiers": [
+            {"id": "free", "name": "Free", "priceINR": 0, "priceUSD": 0, "features": ["dashboard","tax","compliance"]},
+            {"id": "pro", "name": "Pro", "priceINR": 999, "priceUSD": 12, "features": ["all-except-admin"]},
+            {"id": "enterprise", "name": "Enterprise", "priceINR": 2999, "priceUSD": 35, "features": ["all","admin","api"]},
+        ],
+        "maintenanceMode": False,
+    }
+
+@app.post("/api/v1/admin/config")
+def admin_update_config(req: ConfigUpdateRequest, authorization: Optional[str] = None):
+    require_admin(authorization)
+    return {"success": True, "config": req.dict(exclude_none=True)}
+
 if __name__ == "__main__":
     import uvicorn
     API_HOST = os.environ.get("API_HOST", "0.0.0.0")

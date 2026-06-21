@@ -22,6 +22,7 @@ pre{white-space:pre-wrap;word-break:break-word}
 <script>
 const SUPABASE_URL='https://kjkwruzkfrxfwaokzqbs.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_jA8qt1LWb95oQYnUh-59fA_klPe8kXE';
+const ADMIN_TOKEN=localStorage.getItem('admin_token')||'';
 let sb=null;
 try{if(window.supabase&&typeof window.supabase.createClient==='function'){sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}}catch(e){sb=null}
 const API_BASE='/api/v1';
@@ -33,9 +34,9 @@ const modules=[
 {id:'legal',name:'AI Legal Compliance'},{id:'hr',name:'AI HR Compliance'},
 {id:'fundraising',name:'AI Fundraising Advisor'},{id:'health',name:'AI Business Health'},
 {id:'collections',name:'AI Collections Agent'},{id:'procurement',name:'AI Procurement'},
-{id:'benefits',name:'Government Benefits'},{id:'global',name:'AI Global Expansion'},{id:'statements',name:'Financial Statements'}
+{id:'benefits',name:'Government Benefits'},{id:'global',name:'AI Global Expansion'},
+{id:'statements',name:'Financial Statements'},{id:'admin',name:'Admin'}
 ];
-
 let state={page:'dashboard',user:null,mobileNav:false};
 
 function $(sel,el=document){return el.querySelector(sel)}
@@ -66,6 +67,7 @@ function header(){
     <div class="flex items-center gap-3">
       <button class="text-xs glass px-3 py-1 rounded" onclick="connectBackend()">Backend: <span id="backend-status">checking…</span></button>
       ${u?`<span class="text-xs text-white/60">${escape(u.email||u.phone)}</span><button class="text-xs btn-secondary px-3 py-1 rounded" onclick="logout()">Sign out</button>`:''}
+      <button onclick="navigate('admin')" class="text-xs glass px-3 py-1 rounded">Admin</button>
     </div>
   </header>`;
 }
@@ -364,6 +366,55 @@ async function loadChat(){
 
 function renderStatements(root){renderModule(root,'Financial Statements',`<div class="glass p-4 rounded"><canvas id="stmtChart" height="120"></canvas></div>`)}
 
+function renderAdmin(root){root.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Admin</h2>
+<div class="flex gap-2 border-b border-white/10 pb-2">
+  <button onclick="adminTab('users')" class="text-xs btn-secondary px-3 py-1 rounded" id="admin-tab-users">Users</button>
+  <button onclick="adminTab('config')" class="text-xs btn-secondary px-3 py-1 rounded" id="admin-tab-config">Config</button>
+  <button onclick="adminTab('stats')" class="text-xs btn-secondary px-3 py-1 rounded" id="admin-tab-stats">Stats</button>
+</div>
+<div id="admin-content"><div class="glass p-4 rounded text-xs text-white/60">Loading…</div></div>
+</section>`;adminTab('users')}
+
+async function adminTab(tab){
+  const content=$('#admin-content');if(!content)return;
+  if(tab==='users'){
+    document.querySelectorAll('[id^=admin-tab-]').forEach(b=>b.classList.remove('btn-primary'));const tb=$('#admin-tab-users');if(tb)tb.classList.add('btn-primary');
+    content.innerHTML=`<div class="glass p-4 rounded space-y-2"><div class="text-sm font-semibold">Users</div><pre id="admin-users" class="text-xs bg-black/30 p-3 rounded h-96 overflow-auto">Loading…</pre></div>`;
+    try{const j=await api('/api/v1/admin/users',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-users').textContent=JSON.stringify(j.users,null,2);buildUserActions(j.users)}
+    catch(e){content.innerHTML=`<div class="glass p-4 rounded text-xs text-red-300">${escape(e.message)}</div>`}
+  }else if(tab==='config'){
+    document.querySelectorAll('[id^=admin-tab-]').forEach(b=>b.classList.remove('btn-primary'));const tb=$('#admin-tab-config');if(tb)tb.classList.add('btn-primary');
+    content.innerHTML=`<div class="glass p-4 rounded space-y-2"><div class="text-sm font-semibold">Config</div><pre id="admin-config" class="text-xs bg-black/30 p-3 rounded h-96 overflow-auto">Loading…</pre></div>`;
+    try{const j=await api('/api/v1/admin/config',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-config').textContent=JSON.stringify(j,null,2)}
+    catch(e){content.innerHTML=`<div class="glass p-4 rounded text-xs text-red-300">${escape(e.message)}</div>`}
+  }else if(tab==='stats'){
+    document.querySelectorAll('[id^=admin-tab-]').forEach(b=>b.classList.remove('btn-primary'));const tb=$('#admin-tab-stats');if(tb)tb.classList.add('btn-primary');
+    content.innerHTML=`<div class="glass p-4 rounded space-y-2"><div class="text-sm font-semibold">Stats</div><pre id="admin-stats" class="text-xs bg-black/30 p-3 rounded h-96 overflow-auto">Loading…</pre></div>`;
+    try{const j=await api('/api/v1/admin/stats',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-stats').textContent=JSON.stringify(j,null,2)}
+    catch(e){content.innerHTML=`<div class="glass p-4 rounded text-xs text-red-300">${escape(e.message)}</div>`}
+  }
+}
+
+function buildUserActions(users){
+  const existing=$('#admin-user-actions');if(existing)existing.remove();
+  const container=document.createElement('div');container.id='admin-user-actions';container.className='glass p-4 rounded mt-3 space-y-2';
+  container.innerHTML=`<div class="text-sm font-semibold">Update User</div>
+<input id="auid" class="text-xs" placeholder="User ID"/><input id="asub" class="text-xs" placeholder="Subscription (free/pro/enterprise)"/>
+<input id="amod" class="text-xs" placeholder="Modules comma-separated"/>
+<button onclick="adminUpdateUser()" class="btn-primary text-xs px-3 py-2 rounded">Update</button>
+<div id="admin-update-result" class="text-xs"></div>`;
+  const usersSection=document.querySelector('#admin-users');if(usersSection && usersSection.parentNode) usersSection.parentNode.appendChild(container);
+}
+async function adminUpdateUser(){
+  const userId=$('#auid').value,subscription=$('#asub').value,modules=$('#amod').value;
+  if(!userId){alert('Enter user ID');return}
+  const body={userId};
+  if(subscription) body.subscription=subscription;
+  if(modules) body.activeModules=modules.split(',');
+  try{const j=await api('/api/v1/admin/users/update',{method:'POST',headers:{Authorization:'Bearer '+localStorage.getItem('admin_token'),'Content-Type':'application/json'},body:JSON.stringify(body)});$('#admin-update-result').textContent=JSON.stringify(j,null,2);alert('User updated')}
+  catch(e){$('#admin-update-result').textContent=e.message}
+}
+
 function renderPlaceholder(root,title,desc){root.innerHTML=`<section class="p-4 md:p-6">${placeholder(title,desc)}</section>`}
 
 function renderSettings(){const root=$('#page-content');root.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Settings</h2>
@@ -404,15 +455,18 @@ function navigate(id){
   document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.id===id));
   $('#page-title').textContent=modules.find(m=>m.id===id).name;
   const r=$('#page-content');
-  ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements})[id]?.(r);
+  ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements,admin:renderAdmin})[id]?.(r);
   if(id==='settings') renderSettings();
+  if(id==='admin' && !localStorage.getItem('admin_token')){
+    const r=$('#page-content');r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Admin Login</h2><div class="glass p-4 rounded space-y-2"><input id="admin-token" class="w-full" placeholder="Admin token"/><button onclick="adminLogin()" class="btn-primary w-full rounded py-2 text-sm">Login</button></div></section>`;
+  }
 }
 
 function build(root){
   root.innerHTML=nav()+header()+`<main class="min-h-screen"><section class="p-4 md:p-6" id="page-content"></section></main>`+floatingChat();
   const navEl=$('#nav');
   if(navEl){
-    navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`
+    navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`+`<button data-id="admin" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Admin</button>`
   }
   navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))
   loadChat();
