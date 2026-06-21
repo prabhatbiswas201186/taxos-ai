@@ -166,8 +166,11 @@ chat_sessions: Dict[str, List[Dict]] = {}
 forecasts: Dict[str, Dict] = {}
 audit_findings: Dict[str, List[Dict]] = {}
 
-UPLOAD_DIR = Path("./uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
+UPLOAD_DIR = Path("/tmp/uploads") if os.environ.get("VERCEL") else Path("./uploads")
+try:
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
 APP_CONFIG = {
   "allowedFileTypes": [".pdf", ".csv", ".xlsx", ".jpg", ".jpeg", ".png"],
   "uploadMaxSize": 10 * 1024 * 1024,
