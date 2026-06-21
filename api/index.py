@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Header
 from starlette.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -909,8 +909,8 @@ class ConfigUpdateRequest(BaseModel):
     globalPricing: Optional[Dict[str, Any]] = None
     maintenanceMode: Optional[bool] = None
 
-def require_admin(auth_header: Optional[str] = None):
-    token = (auth_header or "").replace("Bearer ", "")
+def require_admin(authorization: Optional[str] = Header(None, alias="Authorization")):
+    token = (authorization or "").replace("Bearer ", "", 1)
     if token != ADMIN_TOKEN:
         raise HTTPException(401, "Invalid admin token")
     return True
@@ -922,7 +922,7 @@ def admin_login(req: AdminLoginRequest):
     return {"admin": True, "token": ADMIN_TOKEN}
 
 @app.get("/api/v1/admin/users")
-def admin_list_users(authorization: Optional[str] = None):
+def admin_list_users(authorization: Optional[str] = Header(None, alias="Authorization")):
     require_admin(authorization)
     result = []
     for uid, user in users.items():
@@ -939,7 +939,7 @@ def admin_list_users(authorization: Optional[str] = None):
     return {"users": result}
 
 @app.post("/api/v1/admin/users/update")
-def admin_update_user(req: UserUpdateRequest, authorization: Optional[str] = None):
+def admin_update_user(req: UserUpdateRequest, authorization: Optional[str] = Header(None, alias="Authorization")):
     require_admin(authorization)
     if req.userId not in profiles:
         profiles[req.userId] = {"id": req.userId}
@@ -953,7 +953,7 @@ def admin_update_user(req: UserUpdateRequest, authorization: Optional[str] = Non
     return {"success": True, "profile": p}
 
 @app.get("/api/v1/admin/stats")
-def admin_stats(authorization: Optional[str] = None):
+def admin_stats(authorization: Optional[str] = Header(None, alias="Authorization")):
     require_admin(authorization)
     total_users = len(users)
     total_profiles = len(profiles)
@@ -974,7 +974,7 @@ def admin_stats(authorization: Optional[str] = None):
     }
 
 @app.get("/api/v1/admin/config")
-def admin_get_config(authorization: Optional[str] = None):
+def admin_get_config(authorization: Optional[str] = Header(None, alias="Authorization")):
     require_admin(authorization)
     return {
         "modules": [
@@ -1008,7 +1008,7 @@ def admin_get_config(authorization: Optional[str] = None):
     }
 
 @app.post("/api/v1/admin/config")
-def admin_update_config(req: ConfigUpdateRequest, authorization: Optional[str] = None):
+def admin_update_config(req: ConfigUpdateRequest, authorization: Optional[str] = Header(None, alias="Authorization")):
     require_admin(authorization)
     return {"success": True, "config": req.dict(exclude_none=True)}
 
