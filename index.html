@@ -246,7 +246,7 @@ function renderAudit(root) {
 async function loadAudit() {
   const out = document.getElementById('audit-result');
   try {
-    const j = await api('/api/v1/audit/scan', { method:'POST', body: JSON.stringify({ userId:'u1', businessId:'b1' }) });
+    const j = await api('/api/v1/audit/scan?userId=u1&businessId=b1', { method:'POST' });
     out.textContent = JSON.stringify(j, null, 2);
   } catch (e) { out.textContent = 'Error: ' + e.message; }
 }
