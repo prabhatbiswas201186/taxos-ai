@@ -252,10 +252,10 @@ function runTax(){
   const out=$('#tax-result');const opps=$('#tax-opps');
   try{
     const old=clientTax(income,deductions,'old');
-    const new=clientTax(income,deductions,'new');
-    out.textContent=JSON.stringify({old,new},null,2);
-    const best=old.tax<new.tax?'Old Regime':'New Regime';
-    opps.innerHTML=`<div class="glass p-2 rounded"><div class="font-semibold">Recommended: ${best}</div><div class="text-xs text-white/60">Old: ₹${old.tax.toLocaleString()} | New: ₹${new.tax.toLocaleString()}</div></div>`+
+    const regimeNew=clientTax(income,deductions,'new');
+    out.textContent=JSON.stringify({old,new:regimeNew},null,2);
+    const best=old.tax<regimeNew.tax?'Old Regime':'New Regime';
+    opps.innerHTML=`<div class="glass p-2 rounded"><div class="font-semibold">Recommended: ${best}</div><div class="text-xs text-white/60">Old: ₹${old.tax.toLocaleString()} | New: ₹${regimeNew.tax.toLocaleString()}</div></div>`+
       `<div class="glass p-2 rounded"><div class="font-semibold">Taxable Income</div><div class="text-xs text-white/60">₹${old.taxable_income.toLocaleString()} after deductions</div></div>`;
   }catch(e){out.textContent='Error: '+e.message}
 }
@@ -274,15 +274,20 @@ async function runGst(){
   const out=$('#gst-result');let gstr1=[],purchases=[];
   try{gstr1=JSON.parse($('#gstr1').value||'[]')}catch(e){}
   try{purchases=JSON.parse($('#purchases').value||'[]')}catch(e){}
-  try{const j=await api('/api/v1/gst/reconcile',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',gstr1,gstr3b:[],purchaseRegister:purchases})});
-  out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+  try{
+    const j=await api('/api/v1/gst/reconcile',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',gstr1,gstr3b:[],purchaseRegister:purchases})});
+    out.textContent=JSON.stringify(j,null,2)
+  }catch(e){
+    out.textContent='Backend offline. Showing GST guidance:\n\nGSTR-1: Due 11th next month\nGSTR-3B: Due 20th next month\nITC Rules:\n- Match GSTR-2A/2B before claiming\n- Miss-match > 20%: reversed ITC liability\n- Interest: 18% on reversed ITC\n\nUpload your returns in Settings for AI analysis.';
+  }
+}
 
 function renderCompliance(root){renderModule(root,'Compliance AI',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Compliance Calendar</div>
   <button onclick="loadCompliance()" class="btn-primary rounded px-3 py-2 text-sm">Refresh</button>
   <pre id="compliance-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
 </div>`)}
 
-async function loadCompliance(){const out=$('#compliance-result');try{const j=await api('/api/v1/compliance/check',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',businessId:'b1',filings:{}})});out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+async function loadCompliance(){const out=$('#compliance-result');try{const j=await api('/api/v1/compliance/check',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',businessId:'b1',filings:{}})});out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Backend offline. Key dates:\n\nGST:\n- GSTR-1: 11th of next month\n- GSTR-3B: 20th of next month\n- Annual Return: 31 Dec next FY\n\nIncome Tax:\n- Advance Tax: 15-Jun, 15-Sep, 15-Dec, 15-Mar\n- ITR: 31-July (individuals)\n- Audit ITR: 31-October\n\nTDS:\n- Q1: 31-Jul, Q2: 31-Oct, Q3: 31-Jan, Q4: 31-May\n\nPenalties:\n- GSTR-3B: ₹50/day, max ₹20,000\n- ITR: ₹5,000 under 139(1)\n- TDS: ₹200/day u/s 271H'}}
 
 function renderCfo(root){renderModule(root,'AI CFO',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Cash Flow Forecast</div>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -298,8 +303,11 @@ async function runCashflow(){
   try{rev=JSON.parse($('#cf-rev').value||'[]')}catch(e){}
   try{exp=JSON.parse($('#cf-exp').value||'[]')}catch(e){}
   const out=$('#cf-result');
-  try{const j=await api('/api/v1/cashflow/forecast',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',revenueHistory:rev,expenseHistory:exp})});
-  out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+  try{const j=await api('/api/v1/cashflow/forecast',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',revenueHistory:[],expenseHistory:[],period:'365d'})});
+  out.textContent=JSON.stringify(j,null,2)}catch(e){
+    out.textContent='Backend offline.\n\nConnect the local API (port 8001) for full cash flow forecasting.\n\nGeneral rules:\n- Maintain 3-6 months runway\n- Operating cash flow = revenue - operating expenses\n- Negative trend > 2 months = red flag';
+  }
+}
 
 function renderAudit(root){renderModule(root,'AI Auditor',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">AI Auditor</div>
   <button onclick="loadAudit()" class="btn-primary rounded px-3 py-2 text-sm">Scan</button>
@@ -307,7 +315,7 @@ function renderAudit(root){renderModule(root,'AI Auditor',`<div class="glass p-4
 </div>`)}
 
 async function loadAudit(){const out=$('#audit-result');try{const j=await api('/api/v1/audit/analyze?userId='+(state.user?.id||'u1')+'&businessId=b1',{method:'POST'});
-out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Backend offline.\n\nConnect local API (port 8001) for full AI Auditor.\n\nGeneral checks:\n- Books of accounts maintained?\n- TDS deducted and deposited?\n- GST returns filed on time?\n- Reconciliation done monthly?\n- Audit u/s 44AB applicable?'}}
 
 function renderChat(root){renderModule(root,'AI Chat / CFO',`<div class="glass p-4 rounded space-y-3">
   <div class="text-sm font-semibold">AI Chat / CFO</div>
@@ -317,9 +325,42 @@ function renderChat(root){renderModule(root,'AI Chat / CFO',`<div class="glass p
 </div>`)}
 
 async function sendChat(){
-  const out=$('#chat-result');const msg=$('#chat-msg').value;
-  try{const j=await api('/api/v1/chat',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',message:msg})});
-  out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+  const out=$('#chat-box');const input=$('#chat-msg');
+  const msg=input.value.trim();if(!msg) return;
+  input.value='';
+  appendChat('user',msg);
+  if(sb && state.user){
+    await sb.from('chat_history').insert({user_id:state.user.id,role:'user',message:msg}).catch(()=>{});
+  }
+  // Simple AI response logic
+  const lower=msg.toLowerCase();
+  let reply='I can help with tax, GST, compliance, and financial planning. Upload your documents in Settings and I will analyze them.';
+  if(/\b(gst|input tax credit|itc|reconcile)\b/.test(lower)) reply='For GST reconciliation, go to the GST AI module and upload your GSTR-1 and purchase register JSON. I can also help explain ITC rules.';
+  else if(/\b(tax|income tax|itr|old regime|new regime)\b/.test(lower)) reply='Use the Personal Tax AI module to compare Old vs New regime. Enter your annual income and 80C deductions to get exact tax liability.';
+  else if(/\b(compliance|due date|calendar|penalty)\b/.test(lower)) reply='Check the Compliance AI module for your filing calendar. GSTR-1 is due on the 11th, GSTR-3B on the 20th of the next month.';
+  else if(/\b(pan|aadhar|document|upload)\b/.test(lower)) reply='You can upload PAN, Aadhar, and financial documents in Settings. Supported formats: PDF, JPG, PNG, CSV. Files are stored securely.';
+  else if(/\b(penalty|fine|late|interest)\b/.test(lower)) reply='Late fees: GSTR-3B ₹50/day (max ₹20,000). ITR late fee ₹5,000. TDS late fee ₹200/day. Interest ranges from 12% to 24%.';
+  else if(/\b(80c|deduction|saving|investment)\b/.test(lower)) reply='80C limit is ₹1.5L. Options: PPF, ELSS, life insurance, NSC, home loan principal. Additional ₹50K under 80CCD(1B) for NPS.';
+  appendChat('assistant',reply);
+  if(sb && state.user){await sb.from('chat_history').insert({user_id:state.user.id,role:'assistant',message:reply}).catch(()=>{})}
+}
+
+function appendChat(role,msg){
+  const box=$('#chat-box');if(!box) return;
+  const div=document.createElement('div');
+  div.className=role==='user'?'text-xs bg-indigo-500/20 text-indigo-100 p-2 rounded':'text-xs bg-white/5 text-white/80 p-2 rounded';
+  div.textContent=(role==='user'?'You: ':'TAXOS AI: ')+msg;
+  box.appendChild(div);
+  box.scrollTop=box.scrollHeight;
+}
+
+async function loadChat(){
+  const box=$('#chat-box');if(!box||!sb||!state.user) return;
+  const {data}=await sb.from('chat_history').select('*').eq('user_id',state.user.id).order('created_at',{ascending:true}).limit(50);
+  box.innerHTML='';
+  (data||[]).forEach(row=>appendChat(row.role,row.message));
+}
+
 
 function renderStatements(root){renderModule(root,'Financial Statements',`<div class="glass p-4 rounded"><canvas id="stmtChart" height="120"></canvas></div>`)}
 
@@ -370,7 +411,12 @@ function navigate(id){
 function build(root){
   root.innerHTML=nav()+header()+`<main class="min-h-screen"><section class="p-4 md:p-6" id="page-content"></section></main>`+floatingChat();
   const navEl=$('#nav');
-  if(navEl){navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`}
+  if(navEl){
+    navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`
+  }
+  navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))
+  loadChat();
+  connectBackend();
   if(window.location.hash==='#recovery'){
     const r=$('#page-content');
     r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Set Password</h2>
@@ -379,10 +425,9 @@ function build(root){
         <button onclick="setPassword()" class="btn-primary w-full rounded py-2 text-sm">Update Password</button>
         <div id="auth-error" class="text-xs text-red-400 hidden"></div>
       </div></section>`;
+  }else{
+    navigate('dashboard');
   }
-  navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))
-  if(window.location.hash!=='#recovery') connectBackend();
-  navigate('dashboard');
 }
 
 async function init(){const app=$('#app');if(sb){const{data:{session}}=await sb.auth.getSession();if(session){state.user=session.user}}if(state.user){build(app)}else{authForms()}}
