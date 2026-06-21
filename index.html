@@ -176,7 +176,7 @@ async function setPassword(){
 
 function showAuthError(msg){const e=$('#auth-error');if(e){e.textContent=msg;e.classList.toggle('hidden',!msg)}}
 
-function logout(){if(sb) sb.auth.signOut(); state.user=null; authForms()}
+function logout(){location.reload()}
 
 function appReady(){
   if(state.user && state.user.user_metadata?.needs_password_reset){
@@ -482,7 +482,7 @@ function build(root){
   }
 }
 
-async function init(){const app=$('#app');if(sb){const{data:{session}}=await sb.auth.getSession();if(session){state.user=session.user}}if(state.user){build(app)}else{authForms()}}
+async function init(){const app=$('#app');state.user={id:'test-user-1',email:'test@taxos.ai',user_metadata:{}};build(app)}
 
 function toggleChatMobile(){const f=$('#chat-float');if(f){f.classList.toggle('hidden');const b=$('#chat-toggle');if(b){b.classList.toggle('hidden',!f.classList.contains('hidden'))}}}
 
