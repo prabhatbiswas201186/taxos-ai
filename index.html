@@ -130,15 +130,14 @@ async function sendOtp(){
   const email=$('#auth-email').value;
   const phone=$('#auth-phone').value;
   if(!email&&!phone){showAuthError('Enter email or phone');return}
-  if(sb){
-    const opts={};
-    if(email) opts.email=email;
-    if(phone) opts.phone=phone;
-    const {error}=await sb.auth.signInWithOtp(opts);
-    if(error){showAuthError(error.message);return}
-  }
-  $('#otp-box').classList.remove('hidden');
-  showAuthError('');
+  try{
+    const body={};
+    if(email) body.email=email;
+    if(phone) body.phone=phone;
+    const r=await api('/auth/otp',{method:'POST',body:JSON.stringify(body)});
+    showAuthError('');
+    $('#otp-box').classList.remove('hidden');
+  }catch(e){showAuthError(e.message)}
 }
 
 async function verifyOtp(){
@@ -146,22 +145,21 @@ async function verifyOtp(){
   const phone=$('#auth-phone').value;
   const otp=$('#auth-otp').value;
   if(!otp){showAuthError('Enter OTP');return}
-  if(sb){
-    const {data,error}=await sb.auth.verifyOtp({email,phone,token:otp,type:email?'email':'sms'});
-    if(error){showAuthError(error.message);return}
-    state.user=data.user;
-  }
-  build($('#app'));
+  try{
+    const r=await api('/auth/verify-otp',{method:'POST',body:JSON.stringify({email,phone,token:otp,type:email?'email':'sms'})});
+    const j=await r.json();
+    state.user=j.user;
+    build($('#app'));
+  }catch(e){showAuthError(e.message)}
 }
 
 async function forgotPassword(){
   const email=$('#auth-email').value;
   if(!email){showAuthError('Enter your email first');return}
-  if(sb){
-    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin+'/#recovery'});
-    if(error){showAuthError(error.message);return}
-  }
-  showAuthError('Password reset email sent. Check your inbox.');
+  try{
+    await api('/auth/password-reset',{method:'POST',body:JSON.stringify({email})});
+    showAuthError('Password reset email sent. Check your inbox.');
+  }catch(e){showAuthError(e.message)}
 }
 
 async function setPassword(){

@@ -519,14 +519,61 @@ def login(req: LoginRequest):
 def send_otp(req: OTPRequest):
     if supabase_client:
         try:
-            result = supabase_client.auth.sign_in_with_otp({"email": req.email})
+            params = {"email": req.email}
+            if req.phone:
+                params["phone"] = req.phone
+            result = supabase_client.auth.sign_in_with_otp(params)
             return {"message": "OTP sent", "session": {"error": None, "data": result}}
         except Exception as e:
             raise HTTPException(400, f"Failed to send OTP: {str(e)}")
     else:
         code = str(uuid.uuid4())[:6].upper()
-        users[f"otp-{code}"] = {"email": req.email, "otp": code, "createdAt": datetime.now().isoformat()}
+        users[f"otp-{code}"] = {"email": req.email, "phone": req.phone, "otp": code, "createdAt": datetime.now().isoformat()}
         return {"message": "OTP sent (mock)", "code": code}
+
+class VerifyOTPRequest(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    token: str
+    type: str = "email"
+
+@app.post("/api/v1/auth/verify-otp")
+def verify_otp(req: VerifyOTPRequest):
+    if supabase_client:
+        try:
+            params = {"token": req.token, "type": req.type}
+            if req.email:
+                params["email"] = req.email
+            if req.phone:
+                params["phone"] = req.phone
+            result = supabase_client.auth.verify_otp(params)
+            user = result.user if hasattr(result, "user") else result.get("user")
+            if not user:
+                raise HTTPException(401, "OTP verification failed")
+            return {"user": {"id": user.id, "email": user.email}}
+        except Exception as e:
+            raise HTTPException(401, f"OTP verification failed: {str(e)}")
+    else:
+        # Mock: find matching in-memory OTP (code stored as key for quick lookup)
+        # We saved OTP keyed by code in send_otp.
+        match = None
+        for key, entry in list(users.items()):
+            if key.startswith("otp-") and entry.get("otp") == req.token:
+                if req.type == "email" and entry.get("email") == req.email:
+                    match = entry
+                    break
+                if req.type == "sms" and entry.get("phone") == req.phone:
+                    match = entry
+                    break
+        if not match:
+            raise HTTPException(401, "Invalid or expired OTP")
+        uid = f"user-{uuid.uuid4()}"
+        users[uid] = {"id": uid, "email": match.get("email", ""), "phone": match.get("phone", ""), "createdAt": datetime.now().isoformat()}
+        # Cleanup used OTP
+        for k in list(users.keys()):
+            if users[k].get("otp") == req.token:
+                users.pop(k, None)
+        return {"user": {"id": uid, "email": match.get("email", ""), "phone": match.get("phone", "")}}
 
 @app.post("/api/v1/auth/password-reset")
 def password_reset(req: PasswordResetRequest):
