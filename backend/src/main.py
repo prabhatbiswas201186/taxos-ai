@@ -6,13 +6,17 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 import os, json, uuid, re
 from pathlib import Path
+from supabase import create_client, Client
 
 app = FastAPI(title="TAXOS AI Backend", version="1.0.0")
 
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
+ALLOW_CREDENTIALS = os.environ.get("ALLOW_CREDENTIALS", "true").lower() == "true"
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=ALLOW_CREDENTIALS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -63,6 +67,24 @@ class InvoiceUploadRequest(BaseModel):
     filename: str
     fileType: str
     fileSize: int
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+class OTPRequest(BaseModel):
+    email: str
+
+class PasswordResetRequest(BaseModel):
+    email: str
+    token: str = ""
+    new_password: str = ""
+
+class SuggestRequest(BaseModel):
+    userId: str
+    query: str
+    context: str = ""
+    module: str = "general"
 
 # === INDIAN TAX REGULATIONS DATABASE ===
 INDIA_REGULATIONS = {
@@ -150,6 +172,16 @@ APP_CONFIG = {
   "allowedFileTypes": [".pdf", ".csv", ".xlsx", ".jpg", ".jpeg", ".png"],
   "uploadMaxSize": 10 * 1024 * 1024,
 }
+
+# === SUPABASE CLIENT (optional) ===
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+supabase_client: Optional[Client] = None
+try:
+    if SUPABASE_URL and SUPABASE_ANON_KEY:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+except Exception:
+    supabase_client = None
 
 class IndianTaxEngine:
     @staticmethod
@@ -455,6 +487,79 @@ class AIEngine:
         }
 
 # === ROUTES ===
+
+@app.post("/api/v1/auth/login")
+def login(req: LoginRequest):
+    if supabase_client:
+        try:
+            result = supabase_client.auth.sign_in_with_password({"email": req.email, "password": req.password})
+            return {
+                "access_token": result.session.access_token,
+                "token_type": "bearer",
+                "user": {"id": result.user.id, "email": result.user.email},
+            }
+        except Exception:
+            raise HTTPException(401, "Invalid credentials")
+    else:
+        for uid, user in users.items():
+            if user.get("email") == req.email:
+                return {"access_token": f"token-{uid}", "token_type": "bearer", "user": user}
+        raise HTTPException(401, "Invalid credentials")
+
+@app.post("/api/v1/auth/otp")
+def send_otp(req: OTPRequest):
+    if supabase_client:
+        try:
+            result = supabase_client.auth.sign_in_with_otp({"email": req.email})
+            return {"message": "OTP sent", "session": {"error": None, "data": result}}
+        except Exception as e:
+            raise HTTPException(400, f"Failed to send OTP: {str(e)}")
+    else:
+        code = str(uuid.uuid4())[:6].upper()
+        users[f"otp-{code}"] = {"email": req.email, "otp": code, "createdAt": datetime.now().isoformat()}
+        return {"message": "OTP sent (mock)", "code": code}
+
+@app.post("/api/v1/auth/password-reset")
+def password_reset(req: PasswordResetRequest):
+    if supabase_client:
+        try:
+            if req.token and req.new_password:
+                result = supabase_client.auth.update_user(req.token, {"password": req.new_password})
+                return {
+                    "message": "Password reset successful",
+                    "user": {"id": result.user.id, "email": result.user.email},
+                }
+            else:
+                supabase_client.auth.reset_password_for_email(req.email)
+                return {"message": "Password reset email sent"}
+        except Exception as e:
+            raise HTTPException(400, f"Reset failed: {str(e)}")
+    else:
+        if req.token and req.new_password:
+            for uid, user in users.items():
+                if user.get("email") == req.email:
+                    return {"message": "Password reset successful (mock)", "userId": uid}
+        for uid, user in users.items():
+            if user.get("email") == req.email:
+                return {"message": "Password reset email sent (mock)"}
+        raise HTTPException(404, "User not found")
+
+@app.post("/api/v1/suggest")
+def suggest(req: SuggestRequest):
+    context = req.context or req.module
+    suggestions = [
+        f"Consider optimizing your {context} strategy based on your query: {req.query[:60]}",
+        f"Review compliance requirements for {context}",
+        f"Explore tax saving opportunities related to: {req.query[:40]}",
+    ]
+    return {
+        "query": req.query,
+        "module": req.module,
+        "context": context,
+        "suggestions": suggestions,
+        "generatedAt": datetime.now().isoformat(),
+    }
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "taxos-backend", "timestamp": datetime.now().isoformat()}
@@ -754,48 +859,6 @@ def dashboard(user_id: str):
         },
     }
 
-@app.post("/api/v1/invoices")
-def create_invoice(invoice: Dict):
-    inv_id = str(uuid.uuid4())
-    inv = {
-        "id": inv_id,
-        "userId": invoice["userId"],
-        "businessId": invoice["businessId"],
-        "invoiceNumber": invoice.get("invoiceNumber", f"INV-{datetime.now().strftime('%Y%m%d')}-{inv_id[:6]}"),
-        "clientName": invoice.get("clientName", ""),
-        "amount": invoice.get("amount", 0),
-        "taxAmount": invoice.get("taxAmount", 0),
-        "totalAmount": invoice.get("totalAmount", invoice.get("amount", 0)),
-        "date": invoice.get("date", datetime.now().isoformat()),
-        "dueDate": invoice.get("dueDate", (datetime.now() + timedelta(days=30)).isoformat()),
-        "status": invoice.get("status", "draft"),
-        "ocrData": invoice.get("ocrData", {}),
-        "createdAt": datetime.now().isoformat(),
-    }
-
-    uid = invoice["userId"]
-    if uid not in invoices:
-        invoices[uid] = []
-    invoices[uid].append(inv)
-
-    # Trigger anomaly detection
-    user_expenses = expenses.get(uid, [])
-    user_invoices = invoices.get(uid, [])
-    findings = AIEngine.detect_anomalies(uid, user_expenses, user_invoices)
-    if findings:
-        if uid not in audit_findings:
-            audit_findings[uid] = []
-        audit_findings[uid].extend(findings)
-
-    return {"invoice": inv}
-
-@app.get("/api/v1/invoices/{user_id}")
-def get_invoices(user_id: str, status: Optional[str] = None):
-    user_invs = invoices.get(user_id, [])
-    if status:
-        user_invs = [i for i in user_invs if i["status"] == status]
-    return {"invoices": user_invs, "count": len(user_invs)}
-
 @app.get("/api/v1/modules")
 def list_modules():
     return {
@@ -822,4 +885,6 @@ def list_modules():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    API_HOST = os.environ.get("API_HOST", "0.0.0.0")
+    API_PORT = int(os.environ.get("API_PORT", "8001"))
+    uvicorn.run("main:app", host=API_HOST, port=API_PORT, reload=True)

@@ -1,285 +1,301 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>TAXOS AI</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  body { background:#08090a; color:#e5e7eb; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
-  .glass { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); }
-  .sidebar-item.active { background: rgba(94,106,210,0.18); border-left: 2px solid #5e6ad2; }
-  input, select, textarea { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #e5e7eb; }
-  .btn-primary { background:#5e6ad2; color:white; }
-  .btn-primary:hover { background:#4a56b5; }
-  .badge { font-size:11px; padding:2px 8px; border-radius:999px; background:rgba(94,106,210,0.2); color:#a5b4fc; }
-  .kpi { background: #0c0d12; border:1px solid rgba(255,255,255,0.06); }
-  pre { white-space: pre-wrap; word-break: break-word; }
-</style>
-</head>
-<body class="min-h-screen">
-<div id="app" class="flex min-h-screen">
-  <aside class="w-64 glass border-r border-white/5 hidden md:flex flex-col">
-    <div class="p-4 text-lg font-bold tracking-wide">TAXOS<span class="text-indigo-400">.ai</span></div>
-    <nav class="px-2 space-y-1 text-sm" id="nav"></nav>
-    <div class="mt-auto p-4 text-xs text-white/50">v0.1 · India Tax AI</div>
-  </aside>
-  <main class="flex-1 min-w-0">
-    <header class="h-14 glass border-b border-white/5 flex items-center justify-between px-4">
-      <div class="font-semibold" id="page-title">Dashboard</div>
-      <div class="flex items-center gap-3">
-        <button class="text-xs glass px-3 py-1 rounded" onclick="connectBackend()">Backend: <span id="backend-status">checking…</span></button>
-        <button class="text-xs glass px-3 py-1 rounded" onclick="location.reload()">Reload</button>
-      </div>
-    </header>
-    <section class="p-4 md:p-6" id="page-content"></section>
-  </main>
-</div>
-
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>TAXOS AI</title><script src="https://cdn.tailwindcss.com"><\/script><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/><style>
+*{font-family:'Inter',system-ui,sans-serif}
+body{background:#030308;color:#e5e7eb}
+.glass{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(12px)}
+.sidebar-item{transition:.15s ease;font-weight:600}
+.sidebar-item:hover{background:rgba(94,106,210,.12)}
+.sidebar-item.active{background:rgba(94,106,210,.22);border-left:2px solid #5e6ad2;font-weight:700}
+.btn-primary{background:#5e6ad2;color:#fff;font-weight:500;transition:.15s ease}
+.btn-primary:hover{background:#4a56b5}
+.btn-secondary{background:rgba(255,255,255,.07);color:#e5e7eb}
+input,textarea,select{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#e5e7eb;border-radius:.5rem;padding:.5rem .75rem;outline:none;transition:.15s}
+input:focus,textarea:focus{border-color:#5e6ad2;box-shadow:0 0 0 2px rgba(94,106,210,.2)}
+.badge{font-size:11px;padding:3px 10px;border-radius:999px;background:rgba(94,106,210,.15);color:#a5b4fc;font-weight:500}
+.kpi{background:#09090b;border:1px solid rgba(255,255,255,.06);box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.chat-float{position:fixed;bottom:24px;right:24px;width:360px;max-height:520px;z-index:50}
+pre{white-space:pre-wrap;word-break:break-word}
+</style></head>
+<body class="min-h-screen"><div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundled.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>
 <script>
-const API = 'http://127.0.0.1:8001';
-const modules = [
-  {id:'dashboard',name:'Dashboard',icon:'📊'}, {id:'tax',name:'Personal Tax AI',icon:'🧾'},
-  {id:'gst',name:'GST AI',icon:'💸'}, {id:'compliance',name:'Compliance AI',icon:'🛡️'},
-  {id:'cfo',name:'AI CFO',icon:'📈'}, {id:'audit',name:'AI Auditor',icon:'🔍'},
-  {id:'business',name:'Business Consultant',icon:'💼'}, {id:'fraud',name:'Fraud Detection',icon:'🚨'},
-  {id:'legal',name:'AI Legal Compliance',icon:'⚖️'}, {id:'hr',name:'AI HR Compliance',icon:'👥'},
-  {id:'fundraising',name:'AI Fundraising Advisor',icon:'💰'}, {id:'health',name:'AI Business Health',icon:'❤️'},
-  {id:'collections',name:'AI Collections Agent',icon:'📬'}, {id:'procurement',name:'AI Procurement',icon:'🛒'},
-  {id:'benefits',name:'Government Benefits',icon:'🏛️'}, {id:'global',name:'AI Global Expansion',icon:'🌍'},
-  {id:'chat',name:'AI Chat / CFO',icon:'💬'}, {id:'statements',name:'Financial Statements',icon:'📊'}
+const SUPABASE_URL='https://kjkwruzkfrxfwaokzqbs.supabase.co';
+// PASTE YOUR SUPABASE ANON/PUBLIC KEY HERE. Find it in Supabase Dashboard > Settings > API > anon key.
+const SUPABASE_ANON_KEY='PASTE_YOUR_SUPABASE_ANON_KEY_HERE';
+let sb=null;
+try{if(window.supabase&&typeof window.supabase.createClient==='function'){sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}}catch(e){sb=null}
+const API_BASE='/api/v1';
+
+const modules=[
+{id:'dashboard',name:'Dashboard'},{id:'tax',name:'Personal Tax AI'},{id:'gst',name:'GST AI'},
+{id:'compliance',name:'Compliance AI'},{id:'cfo',name:'AI CFO'},{id:'audit',name:'AI Auditor'},
+{id:'business',name:'Business Consultant'},{id:'fraud',name:'Fraud Detection'},
+{id:'legal',name:'AI Legal Compliance'},{id:'hr',name:'AI HR Compliance'},
+{id:'fundraising',name:'AI Fundraising Advisor'},{id:'health',name:'AI Business Health'},
+{id:'collections',name:'AI Collections Agent'},{id:'procurement',name:'AI Procurement'},
+{id:'benefits',name:'Government Benefits'},{id:'global',name:'AI Global Expansion'},{id:'statements',name:'Financial Statements'}
 ];
-let state = { page:'dashboard', backend:false };
 
-function init() {
-  const nav = document.getElementById('nav');
-  nav.innerHTML = modules.map(m => `
-    <button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded flex items-center gap-2 hover:bg-white/5">
-      <span>${m.icon}</span><span>${m.name}</span>
-    </button>
-  `).join('');
-  nav.querySelectorAll('button').forEach(b => b.onclick = () => navigate(b.dataset.id));
-  navigate('dashboard');
-  connectBackend();
-}
+let state={page:'dashboard',user:null,mobileNav:false};
 
-function navigate(id) {
-  state.page = id;
-  document.querySelectorAll('.sidebar-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
-  const mod = modules.find(m => m.id === id) || modules[0];
-  document.getElementById('page-title').textContent = mod.name;
-  const out = document.getElementById('page-content');
-  const renderer = {
-    dashboard: renderDashboard, tax: renderTax, gst: renderGst, compliance: renderCompliance,
-    cfo: renderCfo, audit: renderAudit, chat: renderChat, statements: renderStatements, business: renderPlaceholder,
-    fraud: renderPlaceholder, legal: renderPlaceholder, hr: renderPlaceholder, fundraising: renderPlaceholder,
-    health: renderPlaceholder, collections: renderPlaceholder, procurement: renderPlaceholder,
-    benefits: renderPlaceholder, global: renderPlaceholder
-  }[mod.id] || renderPlaceholder;
-  renderer(out);
-}
+function $(sel,el=document){return el.querySelector(sel)}
+function escape(s){return String(s).replace(/[&<>'"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\'':'&#39;','"':'&quot;'}[c]))}
 
-async function connectBackend() {
-  const el = document.getElementById('backend-status');
-  try {
-    const r = await fetch(API + '/health');
-    const j = await r.json();
-    state.backend = true;
-    el.textContent = 'connected';
-    el.style.color = '#86efac';
-  } catch (e) {
-    state.backend = false;
-    el.textContent = 'offline';
-    el.style.color = '#fca5a5';
-  }
-}
-
-async function api(path, opts = {}) {
-  if (!state.backend) throw new Error('Backend offline');
-  const r = await fetch(API + path, { headers: { 'Content-Type':'application/json' }, ...opts });
-  if (!r.ok) throw new Error(await r.text());
+async function api(path,opts={}){
+  const r=await fetch(API_BASE+path,{headers:{'Content-Type':'application/json','Accept':'application/json'},...opts});
+  if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
 
-function renderDashboard(root) {
-  root.innerHTML = `
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Total Tax Liability</div><div class="text-2xl font-bold mt-1">₹1.17L</div><div class="text-xs text-white/50">FY 2025-26</div></div>
-      <div class="kpi p-4 rounded"><div class="text-xs text-white/60">GST Due This Month</div><div class="text-2xl font-bold mt-1">₹24,500</div><div class="text-xs text-white/50">GSTR-3B by 20th</div></div>
-      <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Compliance Score</div><div class="text-2xl font-bold mt-1">94/100</div><div class="text-xs text-emerald-300">Excellent</div></div>
-    </div>
-    <div class="mt-6 glass p-4 rounded">
-      <div class="text-sm font-semibold mb-2">Revenue vs Expenses (12M)</div>
-      <canvas id="dashChart" height="120"></canvas>
-    </div>
-  `;
-  setTimeout(() => {
-    const ctx = document.getElementById('dashChart').getContext('2d');
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-        datasets: [
-          { label:'Revenue', data:[120,135,128,145,155,148,162,170,168,180,175,190], borderColor:'#5e6ad2', tension:0.4, fill:true, backgroundColor:'rgba(94,106,210,0.15)' },
-          { label:'Expenses', data:[80,85,90,88,95,92,98,105,102,110,108,115], borderColor:'#f87171', tension:0.4, fill:true, backgroundColor:'rgba(248,113,113,0.15)' }
-        ]
-      },
-      options: { responsive:true, plugins:{ legend:{ labels:{ color:'#e5e7eb' } } }, scales:{ x:{ ticks:{ color:'#9ca3af' }, grid:{ color:'rgba(255,255,255,0.05)' } }, y:{ ticks:{ color:'#9ca3af' }, grid:{ color:'rgba(255,255,255,0.05)' } } } }
-    });
-  }, 50);
+function nav(){
+  return `<aside class="fixed md:relative inset-y-0 left-0 z-40 w-64 glass border-r border-white/5 transform ${state.mobileNav?'translate-x-0':'-translate-x-full'} md:translate-x-0 transition-transform">
+    <div class="p-4 text-base font-bold tracking-wide">TAXOS<span class="text-indigo-400">.ai</span></div>
+    <nav class="px-2 space-y-1 text-sm" id="nav"></nav>
+    <div class="mt-auto p-4 text-xs text-white/50">v0.1 · India Tax AI</div>
+  </aside>
+  <div class="fixed inset-0 bg-black/40 z-30 hidden md:hidden" id="overlay" onclick="toggleMobile()"></div>`;
 }
 
-function renderTax(root) {
-  root.innerHTML = `
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <div class="glass p-4 rounded space-y-3">
-        <div class="text-sm font-semibold">Regime Calculator</div>
-        <label class="text-xs text-white/60">Annual Income (₹)</label>
-        <input id="tax-income" type="number" class="w-full rounded p-2" value="1200000"/>
-        <label class="text-xs text-white/60">80C Investments (₹)</label>
-        <input id="tax-80c" type="number" class="w-full rounded p-2" value="150000"/>
-        <button onclick="runTax()" class="btn-primary w-full rounded p-2">Calculate Tax</button>
-        <pre id="tax-result" class="text-xs bg-black/30 p-3 rounded overflow-auto h-48"></pre>
-      </div>
-      <div class="glass p-4 rounded">
-        <div class="text-sm font-semibold mb-2">Optimization Opportunities</div>
-        <div id="tax-opps" class="space-y-2 text-sm"></div>
-      </div>
+function header(){
+  const u=state.user;
+  return `<header class="h-14 glass border-b border-white/5 flex items-center justify-between px-4 sticky top-0 z-20">
+    <div class="flex items-center gap-3">
+      <button class="md:hidden glass px-2 py-1 rounded text-xs" onclick="toggleMobile()">Menu</button>
+      <div class="font-semibold text-sm" id="page-title">Dashboard</div>
     </div>
-  `;
+    <div class="flex items-center gap-3">
+      <button class="text-xs glass px-3 py-1 rounded" onclick="connectBackend()">Backend: <span id="backend-status">checking…</span></button>
+      ${u?`<span class="text-xs text-white/60">${escape(u.email||u.phone)}</span><button class="text-xs btn-secondary px-3 py-1 rounded" onclick="logout()">Sign out</button>`:''}
+    </div>
+  </header>`;
 }
 
-async function runTax() {
-  const income = Number(document.getElementById('tax-income').value) || 0;
-  const deductions = { '80C': Number(document.getElementById('tax-80c').value) || 0 };
-  const out = document.getElementById('tax-result');
-  const opps = document.getElementById('tax-opps');
-  try {
-    const j = await api('/api/v1/tax/analyze', { method:'POST', body: JSON.stringify({ userId:'u1', income, deductions, regime:'old', fy:'2025-26' }) });
-    out.textContent = JSON.stringify(j.regimeComparison, null, 2);
-    opps.innerHTML = (j.optimizationOpportunities || []).map(o => `<div class="glass p-2 rounded"><div class="font-semibold">${o.title}</div><div class="text-xs text-white/60">${o.description}</div></div>`).join('');
-  } catch (e) {
-    out.textContent = 'Error: ' + e.message;
+function floatingChat(){
+  if(!state.user) return '';
+  return `<div class="chat-float glass rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden" id="chat-float">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div class="text-sm font-semibold">AI Chat / CFO</div>
+      <button onclick="toggleChat()" class="text-xs text-white/60 hover:text-white">−</button>
+    </div>
+    <div id="chat-box" class="flex-1 overflow-y-auto space-y-3 p-3" style="max-height:360px"></div>
+    <div class="p-3 border-t border-white/10">
+      <div class="flex gap-2">
+        <input id="chat-msg" class="flex-1 text-xs" placeholder="Ask about tax, GST, compliance…"/>
+        <button onclick="sendChat()" class="btn-primary text-xs px-3 py-1 rounded">Send</button>
+      </div>
+    </div>
+  </div>
+  <button onclick="toggleChat()" id="chat-toggle" class="fixed bottom-5 right-5 z-50 btn-primary px-4 py-2 rounded-full text-sm shadow-lg hidden">Chat</button>`;
+}
+
+function renderModule(root, title, body){
+  root.innerHTML=`<section class="p-4 md:p-6"><h2 class="text-base font-semibold mb-4">${title}</h2><div class="space-y-4">${body}</div></section>`;
+}
+
+function placeholder(title,desc){return `<div class="glass p-4 rounded"><div class="text-sm font-semibold">${title}</div><div class="text-xs text-white/60 mt-1">${desc}</div></div>`}
+
+function authForms(){
+  const app=$('#app');
+  app.innerHTML=`<div class="min-h-screen flex items-center justify-center p-4"><div class="w-full max-w-md glass rounded-2xl p-6 space-y-4">
+    <div class="text-center"><div class="text-xl font-bold">TAXOS<span class="text-indigo-400">.ai</span></div><div class="text-xs text-white/60 mt-1">Your AI Financial OS</div></div>
+    <div id="auth-forms"></div>
+  </div></div>`;
+  const box=$('#auth-forms');
+  box.innerHTML=`<div class="space-y-3">
+    <input id="auth-email" type="email" class="w-full" placeholder="Email"/>
+    <input id="auth-phone" type="tel" class="w-full" placeholder="Phone (for OTP)"/>
+    <button onclick="sendOtp()" class="btn-primary w-full rounded py-2 text-sm">Send OTP</button>
+    <div class="text-xs text-white/50 text-center">We’ll send a one-time code to your email or phone.</div>
+    <div id="otp-box" class="hidden space-y-2">
+      <input id="auth-otp" type="text" class="w-full" placeholder="Enter OTP"/>
+      <button onclick="verifyOtp()" class="btn-primary w-full rounded py-2 text-sm">Verify & Continue</button>
+    </div>
+    <div id="reset-box" class="hidden space-y-2">
+      <input id="reset-password" type="password" class="w-full" placeholder="New password"/>
+      <button onclick="resetPassword()" class="btn-secondary w-full rounded py-2 text-sm">Set password</button>
+    </div>
+    <div id="auth-error" class="text-xs text-red-400 hidden"></div>
+  </div>`;
+}
+
+async function sendOtp(){
+  const email=$('#auth-email').value;
+  const phone=$('#auth-phone').value;
+  if(!email&&!phone){showAuthError('Enter email or phone');return}
+  // use Supabase auth OTP
+  if(sb){
+    const {error}=await sb.auth.signInWithOtp({email,phone});
+    if(error){showAuthError(error.message);return}
+  }
+  $('#otp-box').classList.remove('hidden');
+  showAuthError('');
+}
+
+async function verifyOtp(){
+  const email=$('#auth-email').value;
+  const phone=$('#auth-phone').value;
+  const otp=$('#auth-otp').value;
+  if(!otp){showAuthError('Enter OTP');return}
+  if(sb){
+    const {data,error}=await sb.auth.verifyOtp({email,phone,token:otp,type:email?'email':'sms'});
+    if(error){showAuthError(error.message);return}
+    state.user=data.user;
+  }
+  appReady();
+}
+
+async function resetPassword(){
+  if(sb){
+    await sb.auth.updateUser({password:$('#reset-password').value});
+  }
+  window.location.reload();
+}
+
+function showAuthError(msg){const e=$('#auth-error');if(e){e.textContent=msg;e.classList.toggle('hidden',!msg)}}
+
+function logout(){if(sb) sb.auth.signOut(); state.user=null; authForms()}
+
+function appReady(){
+  if(state.user && state.user.user_metadata?.needs_password_reset){
+    $('#reset-box').classList.remove('hidden');
   }
 }
 
-function renderGst(root) {
-  root.innerHTML = `
-    <div class="glass p-4 rounded space-y-3">
-      <div class="text-sm font-semibold">GST Reconciliation</div>
-      <p class="text-xs text-white/60">Upload GSTR-1 / purchase register to auto-match ITC.</p>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div><label class="text-xs text-white/60">GSTR-1 JSON</label><textarea id="gstr1" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
-        <div><label class="text-xs text-white/60">Purchase Register JSON</label><textarea id="purchases" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
-      </div>
-      <button onclick="runGst()" class="btn-primary w-full rounded p-2">Reconcile</button>
-      <pre id="gst-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
-    </div>
-  `;
+function toggleMobile(){state.mobileNav=!state.mobileNav;$('#sidebar').classList.toggle('-translate-x-full',!state.mobileNav);$('#overlay').classList.toggle('hidden',!state.mobileNav)}
+function toggleChat(){const f=$('#chat-float');if(f){f.classList.toggle('hidden');const b=$('#chat-toggle');if(b){b.classList.toggle('hidden',!f.classList.contains('hidden'))}}}
+
+function renderDashboard(root){renderModule(root,'Dashboard',`<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Total Tax Liability</div><div class="text-2xl font-bold mt-1">₹1.17L</div><div class="text-xs text-white/50">FY 2025-26</div></div>
+  <div class="kpi p-4 rounded"><div class="text-xs text-white/60">GST Due This Month</div><div class="text-2xl font-bold mt-1">₹24,500</div><div class="text-xs text-white/50">GSTR-3B by 20th</div></div>
+  <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Compliance Score</div><div class="text-2xl font-bold mt-1">94/100</div><div class="text-xs text-emerald-300">Excellent</div></div>
+</div><div class="mt-6 glass p-4 rounded"><div class="text-sm font-semibold mb-2">Revenue vs Expenses (12M)</div><canvas id="dashChart" height="120"></canvas></div>`)}
+
+function renderTax(root){renderModule(root,'Personal Tax AI',`<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+  <div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Regime Calculator</div>
+    <label class="text-xs text-white/60">Annual Income (₹)</label><input id="tax-income" type="number" class="w-full" value="1200000"/>
+    <label class="text-xs text-white/60">80C Investments (₹)</label><input id="tax-80c" type="number" class="w-full" value="150000"/>
+    <button onclick="runTax()" class="btn-primary w-full rounded py-2">Calculate Tax</button>
+    <pre id="tax-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
+  </div><div class="glass p-4 rounded"><div class="text-sm font-semibold mb-2">Optimization Opportunities</div><div id="tax-opps" class="space-y-2 text-sm"></div></div>
+</div>`)}
+
+async function runTax(){
+  const income=Number($('#tax-income').value)||0;const deductions={'80C':Number($('#tax-80c').value)||0};
+  const out=$('#tax-result');const opps=$('#tax-opps');
+  try{
+    const j=await api('/api/v1/tax/analyze',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',income,deductions,regime:'old',fy:'2025-26'})});
+    out.textContent=JSON.stringify(j.regimeComparison,null,2);
+    opps.innerHTML=(j.optimizationOpportunities||[]).map(o=>`<div class="glass p-2 rounded"><div class="font-semibold">${o.title}</div><div class="text-xs text-white/60">${o.description}</div></div>`).join('');
+  }catch(e){out.textContent='Error: '+e.message}
 }
 
-async function runGst() {
-  const out = document.getElementById('gst-result');
-  try {
-    let gstr1 = [], purchases = [];
-    try { gstr1 = JSON.parse(document.getElementById('gstr1').value || '[]'); } catch {}
-    try { purchases = JSON.parse(document.getElementById('purchases').value || '[]'); } catch {}
-    const j = await api('/api/v1/gst/reconcile', { method:'POST', body: JSON.stringify({ userId:'u1', gstr1, gstr3b: [], purchaseRegister: purchases }) });
-    out.textContent = JSON.stringify(j, null, 2);
-  } catch (e) { out.textContent = 'Error: ' + e.message; }
+function renderGst(root){renderModule(root,'GST AI',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">GST Reconciliation</div>
+  <p class="text-xs text-white/60">Upload GSTR-1 / purchase register to auto-match ITC.</p>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div><label class="text-xs text-white/60">GSTR-1 JSON</label><textarea id="gstr1" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
+    <div><label class="text-xs text-white/60">Purchase Register JSON</label><textarea id="purchases" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
+  </div>
+  <button onclick="runGst()" class="btn-primary w-full rounded py-2">Reconcile</button>
+  <pre id="gst-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
+</div>`)}
+
+async function runGst(){
+  const out=$('#gst-result');let gstr1=[],purchases=[];
+  try{gstr1=JSON.parse($('#gstr1').value||'[]')}catch(e){}
+  try{purchases=JSON.parse($('#purchases').value||'[]')}catch(e){}
+  try{const j=await api('/api/v1/gst/reconcile',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',gstr1,gstr3b:[],purchaseRegister:purchases})});
+  out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+
+function renderCompliance(root){renderModule(root,'Compliance AI',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Compliance Calendar</div>
+  <button onclick="loadCompliance()" class="btn-primary rounded px-3 py-2 text-sm">Refresh</button>
+  <pre id="compliance-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
+</div>`)}
+
+async function loadCompliance(){const out=$('#compliance-result');try{const j=await api('/api/v1/compliance/check',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',businessId:'b1',filings:{}})});out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+
+function renderCfo(root){renderModule(root,'AI CFO',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Cash Flow Forecast</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div><label class="text-xs text-white/60">Revenue JSON</label><textarea id="cf-rev" class="w-full rounded p-2 h-28" placeholder='[{"amount":150000}]'></textarea></div>
+    <div><label class="text-xs text-white/60">Expenses JSON</label><textarea id="cf-exp" class="w-full rounded p-2 h-28" placeholder='[{"amount":90000}]'></textarea></div>
+  </div>
+  <button onclick="runCashflow()" class="btn-primary w-full rounded py-2">Forecast</button>
+  <pre id="cf-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
+</div>`)}
+
+async function runCashflow(){
+  let rev=[],exp=[];
+  try{rev=JSON.parse($('#cf-rev').value||'[]')}catch(e){}
+  try{exp=JSON.parse($('#cf-exp').value||'[]')}catch(e){}
+  const out=$('#cf-result');
+  try{const j=await api('/api/v1/cashflow/forecast',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',revenueHistory:rev,expenseHistory:exp})});
+  out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+
+function renderAudit(root){renderModule(root,'AI Auditor',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">AI Auditor</div>
+  <button onclick="loadAudit()" class="btn-primary rounded px-3 py-2 text-sm">Scan</button>
+  <pre id="audit-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
+</div>`)}
+
+async function loadAudit(){const out=$('#audit-result');try{const j=await api('/api/v1/audit/analyze?userId='+(state.user?.id||'u1')+'&businessId=b1',{method:'POST'});
+out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+
+function renderChat(root){renderModule(root,'AI Chat / CFO',`<div class="glass p-4 rounded space-y-3">
+  <div class="text-sm font-semibold">AI Chat / CFO</div>
+  <textarea id="chat-msg" class="w-full rounded p-2 h-24" placeholder="Ask about tax, GST, compliance..."></textarea>
+  <button onclick="sendChat()" class="btn-primary rounded px-3 py-2 text-sm">Send</button>
+  <pre id="chat-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
+</div>`)}
+
+async function sendChat(){
+  const out=$('#chat-result');const msg=$('#chat-msg').value;
+  try{const j=await api('/api/v1/chat',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',message:msg})});
+  out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Error: '+e.message}}
+
+function renderStatements(root){renderModule(root,'Financial Statements',`<div class="glass p-4 rounded"><canvas id="stmtChart" height="120"></canvas></div>`)}
+
+function renderPlaceholder(root,title,desc){root.innerHTML=`<section class="p-4 md:p-6">${placeholder(title,desc)}</section>`}
+
+function renderSettings(){const root=$('#page-content');root.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Settings</h2>
+  <div class="glass p-4 rounded space-y-3">
+    <div class="text-sm font-semibold">Document Upload</div>
+    <div class="text-xs text-white/60">Upload PAN, Aadhar, or financial documents. Supported: PDF, JPG, PNG, CSV</div>
+    <input id="doc-file" type="file" class="w-full text-xs" accept=".pdf,.jpg,.jpeg,.png,.csv"/>
+    <button onclick="uploadDoc()" class="btn-primary text-xs px-3 py-2 rounded">Upload</button>
+    <pre id="doc-result" class="text-xs bg-black/30 p-3 rounded h-32 overflow-auto"></pre>
+  </div></section>`}
+
+async function uploadDoc(){
+  const file=$('#doc-file').files[0];if(!file){alert('Select a file');return}
+  const fd=new FormData();fd.append('file',file);fd.append('userId',state.user?.id||'u1');
+  try{const r=await fetch(API_BASE+'/documents/upload',{method:'POST',body:fd});const j=await r.json();$('#doc-result').textContent=JSON.stringify(j,null,2)}
+  catch(e){$('#doc-result').textContent='Error: '+e.message}}
+
+function connectBackend(){
+  const el=$('#backend-status');
+  fetch(API_BASE+'/health').then(r=>r.json()).then(j=>{el.textContent='connected';el.style.color='#86efac';state.backend=true}).catch(()=>{el.textContent='offline';el.style.color='#fca5a5';state.backend=false})}
+
+function navigate(id){
+  state.page=id;
+  document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.id===id));
+  $('#page-title').textContent=modules.find(m=>m.id===id).name;
+  const r=$('#page-content');
+  ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements})[id]?.(r);
+  if(id==='settings') renderSettings();
 }
 
-function renderCompliance(root) {
-  root.innerHTML = `
-    <div class="glass p-4 rounded space-y-3">
-      <div class="text-sm font-semibold">Compliance Calendar</div>
-      <button onclick="loadCompliance()" class="btn-primary rounded px-3 py-1">Refresh</button>
-      <pre id="compliance-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
-    </div>
-  `;
+function build(root){
+  root.innerHTML=nav()+header()+`<main class="min-h-screen"><section class="p-4 md:p-6" id="page-content"></section></main>`+floatingChat();
+  const navEl=$('#nav');
+  if(navEl){navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`;
+  navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))}
+  connectBackend();navigate('dashboard');
 }
 
-async function loadCompliance() {
-  const out = document.getElementById('compliance-result');
-  try {
-    const j = await api('/api/v1/compliance/check', { method:'POST', body: JSON.stringify({ userId:'u1', businessId:'b1', filings:{} }) });
-    out.textContent = JSON.stringify(j, null, 2);
-  } catch (e) { out.textContent = 'Error: ' + e.message; }
-}
+function init(){const app=$('#app');if(state.user){build(app)}else{authForms()}}
 
-function renderCfo(root) {
-  root.innerHTML = `
-    <div class="glass p-4 rounded space-y-3">
-      <div class="text-sm font-semibold">Cash Flow Forecast</div>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div><label class="text-xs text-white/60">Revenue JSON</label><textarea id="cf-rev" class="w-full rounded p-2 h-28" placeholder='[{"amount":150000}]'></textarea></div>
-        <div><label class="text-xs text-white/60">Expenses JSON</label><textarea id="cf-exp" class="w-full rounded p-2 h-28" placeholder='[{"amount":90000}]'></textarea></div>
-      </div>
-      <button onclick="runCashflow()" class="btn-primary w-full rounded p-2">Forecast</button>
-      <pre id="cf-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
-    </div>
-  `;
-}
+function toggleChatMobile(){const f=$('#chat-float');if(f){f.classList.toggle('hidden');const b=$('#chat-toggle');if(b){b.classList.toggle('hidden',!f.classList.contains('hidden'))}}}
 
-async function runCashflow() {
-  const out = document.getElementById('cf-result');
-  try {
-    let rev = [], exp = [];
-    try { rev = JSON.parse(document.getElementById('cf-rev').value || '[]'); } catch {}
-    try { exp = JSON.parse(document.getElementById('cf-exp').value || '[]'); } catch {}
-    const j = await api('/api/v1/cashflow/forecast', { method:'POST', body: JSON.stringify({ userId:'u1', revenueHistory: rev, expenseHistory: exp }) });
-    out.textContent = JSON.stringify(j, null, 2);
-  } catch (e) { out.textContent = 'Error: ' + e.message; }
-}
-
-function renderAudit(root) {
-  root.innerHTML = `
-    <div class="glass p-4 rounded space-y-3">
-      <div class="text-sm font-semibold">AI Auditor</div>
-      <button onclick="loadAudit()" class="btn-primary rounded px-3 py-1">Scan</button>
-      <pre id="audit-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
-    </div>
-  `;
-}
-
-async function loadAudit() {
-  const out = document.getElementById('audit-result');
-  try {
-    const j = await api('/api/v1/audit/analyze?userId=u1&businessId=b1', { method:'POST' });
-    out.textContent = JSON.stringify(j, null, 2);
-  } catch (e) { out.textContent = 'Error: ' + e.message; }
-}
-
-function renderChat(root) {
-  root.innerHTML = `
-    <div class="glass p-4 rounded space-y-3">
-      <div class="text-sm font-semibold">AI Chat / CFO</div>
-      <textarea id="chat-msg" class="w-full rounded p-2 h-24" placeholder="Ask about tax, GST, compliance..."></textarea>
-      <button onclick="sendChat()" class="btn-primary rounded px-3 py-1">Send</button>
-      <pre id="chat-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
-    </div>
-  `;
-}
-
-async function sendChat() {
-  const out = document.getElementById('chat-result');
-  const msg = document.getElementById('chat-msg').value;
-  try {
-    const j = await api('/api/v1/chat', { method:'POST', body: JSON.stringify({ userId:'u1', message: msg }) });
-    out.textContent = JSON.stringify(j, null, 2);
-  } catch (e) { out.textContent = 'Error: ' + e.message; }
-}
-
-function renderStatements(root) {
-  root.innerHTML = `<div class="glass p-4 rounded">Financial Statements module. Connect backend for live statements.</div>`;
-}
-
-function renderPlaceholder(root) {
-  const mod = modules.find(m => m.id === state.page) || {icon:'📦', name:'Module'};
-  root.innerHTML = `<div class="glass p-4 rounded">${mod.icon} ${mod.name} module ready. Connect backend for live data.</div>`;
-}
-
+// restored init
 init();
 </script>
 </body>
