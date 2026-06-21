@@ -13,3 +13,5 @@ build/
 uploads/
 backend/.venv/
 backend/__pycache__/
+
+.vercel
