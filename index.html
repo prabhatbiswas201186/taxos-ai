@@ -391,7 +391,7 @@ async function uploadDoc(){
 }
 function connectBackend(){
   const el=$('#backend-status');
-  const apiOk=fetch(API_BASE+'/health').then(r=>r.ok).catch(()=>false);
+  const apiOk=fetch('/health').then(r=>r.ok).catch(()=>false);
   const sbOk=sb?Promise.resolve(true):Promise.resolve(false);
   Promise.all([apiOk,sbOk]).then(([api,sb])=>{
     if(api){el.textContent='api connected';el.style.color='#86efac'}
