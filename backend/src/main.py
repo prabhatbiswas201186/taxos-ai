@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from starlette.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -85,6 +85,12 @@ class SuggestRequest(BaseModel):
     query: str
     context: str = ""
     module: str = "general"
+
+class ChatRequest(BaseModel):
+    userId: str
+    message: str
+    module: str = "general"
+    context: str = ""
 
 # === INDIAN TAX REGULATIONS DATABASE ===
 INDIA_REGULATIONS = {
@@ -665,7 +671,7 @@ def generate_tasks(businessId: str, legalStructure: str, state: str):
     return {"tasksGenerated": len(tasks)}
 
 @app.post("/api/v1/documents/upload")
-async def upload_document(userId: str, businessId: str, file: UploadFile = File(...)):
+async def upload_document(userId: str = Form(...), businessId: str = Form(...), file: UploadFile = File(...)):
     file_id = str(uuid.uuid4())
     ext = Path(file.filename).suffix.lower()
     if ext not in APP_CONFIG["allowedFileTypes"]:
@@ -803,13 +809,13 @@ def get_audit_findings(user_id: str):
     return {"findings": audit_findings.get(user_id, [])}
 
 @app.post("/api/v1/chat")
-def chat_with_ai(userId: str, message: str, module: str = "general", context: str = ""):
-    session_id = f"{userId}-{module}"
+def chat_with_ai(req: ChatRequest):
+    session_id = f"{req.userId}-{req.module}"
     if session_id not in chat_sessions:
         chat_sessions[session_id] = []
 
-    response = AIEngine.chat(userId, message, context)
-    chat_sessions[session_id].append({"role": "user", "content": message, "timestamp": datetime.now().isoformat()})
+    response = AIEngine.chat(req.userId, req.message, req.context)
+    chat_sessions[session_id].append({"role": "user", "content": req.message, "timestamp": datetime.now().isoformat()})
     chat_sessions[session_id].append({"role": "assistant", "content": response["response"], "timestamp": datetime.now().isoformat()})
 
     return response
