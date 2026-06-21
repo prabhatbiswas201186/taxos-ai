@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, FileResponse
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File
+from starlette.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
@@ -41,9 +42,9 @@ class TaxAnalysisRequest(BaseModel):
 
 class GSTReconcileRequest(BaseModel):
     userId: str
-    gstr1: List[Dict[str, Any]]
-    gstr3b: List[Dict[str, Any]]
-    purchaseRegister: List[Dict[str, Any]]
+    gstr1: List[Dict[str, Any]] = []
+    gstr3b: List[Dict[str, Any]] = []
+    purchaseRegister: List[Dict[str, Any]] = []
 
 class CashFlowRequest(BaseModel):
     userId: str
@@ -54,7 +55,7 @@ class CashFlowRequest(BaseModel):
 class ComplianceCheckRequest(BaseModel):
     userId: str
     businessId: str
-    filings: Dict[str, Any]
+    filings: Dict[str, Any] = {}
 
 class InvoiceUploadRequest(BaseModel):
     userId: str
@@ -145,6 +146,10 @@ audit_findings: Dict[str, List[Dict]] = {}
 
 UPLOAD_DIR = Path("./uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+APP_CONFIG = {
+  "allowedFileTypes": [".pdf", ".csv", ".xlsx", ".jpg", ".jpeg", ".png"],
+  "uploadMaxSize": 10 * 1024 * 1024,
+}
 
 class IndianTaxEngine:
     @staticmethod
@@ -230,9 +235,8 @@ class IndianTaxEngine:
         cess = (tax_after_rebate + surcharge) * 0.04
         total_tax = tax_after_rebate + surcharge + cess
 
-        marginal_relief = 0
-        if total_income <= 1275000:  # standard ded + slabs boundary
-            total_tax = min(total_tax, total_income - 1275000)
+        # Ensure tax is never negative; income floor prevents arbitrary negatives
+        total_tax = max(0, total_tax)
 
         return {
             "regime": "new",
@@ -242,7 +246,6 @@ class IndianTaxEngine:
             "tax_before_rebate": round(tax, 2),
             "rebate_87A": round(rebate, 2),
             "tax_after_rebate": round(tax_after_rebate, 2),
-            "marginal_relief": round(marginal_relief, 2),
             "surcharge": round(surcharge, 2),
             "cess": round(cess, 2),
             "total_tax": round(total_tax, 2),
@@ -487,6 +490,18 @@ def gst_reconcile(req: GSTReconcileRequest):
 def cashflow_forecast(req: CashFlowRequest):
     return AIEngine.forecast_cashflow(req)
 
+@app.get("/api/v1/compliance/upcoming")
+def compliance_upcoming(userId: str, businessId: str):
+    tasks = compliance_tasks.get(businessId, [])
+    now = datetime.now()
+    upcoming = [t for t in tasks if datetime.fromisoformat(t["dueDate"]) > now]
+    return {
+        "userId": userId,
+        "businessId": businessId,
+        "upcomingTasks": upcoming[:10],
+        "upcoming": len(upcoming),
+    }
+
 @app.post("/api/v1/compliance/check")
 def compliance_check(req: ComplianceCheckRequest):
     tasks = compliance_tasks.get(req.businessId, [])
@@ -653,8 +668,8 @@ def get_expenses(user_id: str, category: Optional[str] = None):
     total = sum(e["amount"] for e in user_exp)
     return {"expenses": user_exp, "total": total, "count": len(user_exp)}
 
-@app.post("/api/v1/audit/analyze")
-def audit_analyze(userId: str, businessId: str):
+@app.post("/api/v1/audit/scan")
+def audit_scan(userId: str, businessId: str):
     user_invs = invoices.get(userId, [])
     user_exp = expenses.get(userId, [])
     findings = AIEngine.detect_anomalies(userId, user_exp, user_invs)
@@ -738,6 +753,48 @@ def dashboard(user_id: str):
             "openFindings": len(findings),
         },
     }
+
+@app.post("/api/v1/invoices")
+def create_invoice(invoice: Dict):
+    inv_id = str(uuid.uuid4())
+    inv = {
+        "id": inv_id,
+        "userId": invoice["userId"],
+        "businessId": invoice["businessId"],
+        "invoiceNumber": invoice.get("invoiceNumber", f"INV-{datetime.now().strftime('%Y%m%d')}-{inv_id[:6]}"),
+        "clientName": invoice.get("clientName", ""),
+        "amount": invoice.get("amount", 0),
+        "taxAmount": invoice.get("taxAmount", 0),
+        "totalAmount": invoice.get("totalAmount", invoice.get("amount", 0)),
+        "date": invoice.get("date", datetime.now().isoformat()),
+        "dueDate": invoice.get("dueDate", (datetime.now() + timedelta(days=30)).isoformat()),
+        "status": invoice.get("status", "draft"),
+        "ocrData": invoice.get("ocrData", {}),
+        "createdAt": datetime.now().isoformat(),
+    }
+
+    uid = invoice["userId"]
+    if uid not in invoices:
+        invoices[uid] = []
+    invoices[uid].append(inv)
+
+    # Trigger anomaly detection
+    user_expenses = expenses.get(uid, [])
+    user_invoices = invoices.get(uid, [])
+    findings = AIEngine.detect_anomalies(uid, user_expenses, user_invoices)
+    if findings:
+        if uid not in audit_findings:
+            audit_findings[uid] = []
+        audit_findings[uid].extend(findings)
+
+    return {"invoice": inv}
+
+@app.get("/api/v1/invoices/{user_id}")
+def get_invoices(user_id: str, status: Optional[str] = None):
+    user_invs = invoices.get(user_id, [])
+    if status:
+        user_invs = [i for i in user_invs if i["status"] == status]
+    return {"invoices": user_invs, "count": len(user_invs)}
 
 @app.get("/api/v1/modules")
 def list_modules():

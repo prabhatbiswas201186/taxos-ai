@@ -1,241 +1,647 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>TAXOS AI</title><script src="https://cdn.tailwindcss.com"><\/script><script src="https://cdn.jsdelivr.net/npm/chart.js"><\/script><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script><link rel="manifest" href="/manifest.json"/><style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');:root{--bg:#08090a;--surface:#111214;--border:#26272a;--primary:#5e6ad2;--text:#ededed;--muted:#8a8f98}*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}#bg3d{position:fixed;inset:0;z-index:0;pointer-events:none}.app{position:relative;z-index:1;display:flex;height:100vh}.sidebar{width:260px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 12px;transition:width .2s}.sidebar.collapsed{width:64px}.sidebar .logo{font-weight:700;font-size:18px;padding:8px 12px;margin-bottom:16px;white-space:nowrap;overflow:hidden}.sidebar nav{flex:1;overflow-y:auto}.sidebar nav a{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;color:var(--muted);text-decoration:none;font-size:13px;font-weight:500;transition:all .15s;white-space:nowrap;overflow:hidden}.sidebar nav a.active,.sidebar nav a:hover{background:#1a1c20;color:var(--text)}.sidebar nav a .icon{font-size:16px;width:20px;text-align:center}.main{flex:1;display:flex;flex-direction:column;overflow:hidden}.topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;background:rgba(8,9,10,.7);backdrop-filter:blur(12px)}.search{background:#1a1c20;border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:13px;width:280px}.content{flex:1;overflow-y:auto;padding:24px}.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}.kpi .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}.kpi .value{font-size:24px;font-weight:600;margin-top:4px}.kpi .change{font-size:11px;margin-top:4px}.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:16px}.btn{background:var(--primary);color:white;border:none;padding:8px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}.btn-secondary{background:#1a1c20;color:var(--text);border:1px solid var(--border)}input,select,textarea{background:#1a1c20;border:1px solid var(--border);color:var(--text);padding:8px;border-radius:6px;font-size:13px;width:100%}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid var(--border);text-align:left;font-size:13px}th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.5px}@media(max-width:768px){.sidebar{position:fixed;z-index:50;height:100vh}.kpi-grid{grid-template-columns:1fr 1fr}}</style></head><body><div id="bg3d"></div><div class="app"><aside class="sidebar" id="sidebar"><div class="logo">TAXOS AI</div><nav id="nav"></nav></aside><main class="main"><div class="topbar"><button class="btn-secondary" onclick="toggleSidebar()" style="padding:6px 10px">☰</button><input class="search" placeholder="Search modules, commands…" oninput="filterNav(this.value)"/><span style="margin-left:auto;color:var(--muted);font-size:12px">v1.0</span></div><div class="content" id="content"></div></main></div><script>
-const ROUTES = {
-  dashboard:{title:'Dashboard',icon:'◡ױ',section:'Core'},
-  tax:{title:'Tax AI',icon:'🧾',section:'Core'},
-  gst:{title:'GST AI',icon:'💸',section:'Core'},
-  compliance:{title:'Compliance AI',icon:'🛡️',section:'Core'},
-  invoices:{title:'Invoices',icon:'📑',section:'Operations'},
-  cashflow:{title:'Cash Flow AI',icon:'📈',section:'Operations'},
-  audit:{title:'AI Auditor',icon:'🔍',section:'Operations'},
-  settings:{title:'Settings',icon:'⚙️',section:'Account'},
-};
-const MODULES = {
-  tax:{title:'Personal Tax AI',icon:'🧾'},
-  gst:{title:'GST AI',icon:'💸'},
-  compliance:{title:'Compliance AI',icon:'🛡️'},
-  cfo:{title:'AI CFO',icon:'📈'},
-  audit:{title:'AI Auditor',icon:'🔍'},
-  business:{title:'Business Consultant',icon:'💼'},
-  fraud:{title:'Fraud Detection',icon:'🚨'},
-  legal:{title:'AI Legal Compliance',icon:'⚖️'},
-  hr:{title:'AI HR Compliance',icon:'👥'},
-  fundraising:{title:'AI Fundraising Advisor',icon:'💰'},
-  health:{title:'AI Business Health',icon:'❤️'},
-  collections:{title:'AI Collections Agent',icon:'📬'},
-  procurement:{title:'AI Procurement',icon:'🛒'},
-  benefits:{title:'Government Benefits',icon:'🏛️'},
-  global:{title:'AI Global Expansion',icon:'🌍'},
-  chat:{title:'AI Chat / CFO',icon:'💬'},
-  statements:{title:'Financial Statements',icon:'📊'},
-};
-let state = {route:'dashboard',user:null};
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Taxos AI</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-primary: #0e1016;
+    --bg-surface: #15171c;
+    --bg-raised: #1c1f27;
+    --border: #262a35;
+    --text-primary: #e6e8ee;
+    --text-secondary: #8a8f9a;
+    --accent: #5e6ad2;
+    --accent-light: #8b93f7;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --danger: #f87171;
+    --tag-bg: #252840;
+    --tag-text: #c8cdf7;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font);
+    height: 100vh;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app {
+    display: grid;
+    grid-template-rows: 56px 1fr 28px;
+    grid-template-columns: 260px 1fr 300px;
+    height: 100vh;
+  }
+  header {
+    grid-column: 1 / -1;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 18px;
+  }
+  header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header h1 span.icon {
+    width: 20px; height: 20px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    color: #fff;
+  }
+  .search {
+    flex: 1;
+    max-width: 520px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+  }
+  .search:focus { border-color: var(--accent); }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    border: none;
+    background: var(--bg-raised);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    border-radius: 5px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn:hover { background: #262a35; }
+  .btn.primary { background: var(--accent); }
+  .btn.primary:hover { background: var(--accent-light); }
+  nav {
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    padding: 10px 8px;
+  }
+  nav section { margin-bottom: 12px; }
+  nav section.title {
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    padding: 4px 10px 6px;
+    margin-top: 6px;
+  }
+  nav button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-family: var(--font);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    padding: 5px 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  nav button:hover { background: var(--bg-raised); color: var(--text-primary); }
+  nav button.active { background: var(--bg-raised); color: var(--text-primary); font-weight: 600; }
+  nav button .count {
+    margin-left: auto;
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 3px;
+  }
+  .main {
+    overflow: auto;
+    background: var(--bg-primary);
+  }
+  .pane-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .pane-header h2 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  .pane-header .filters { margin-left: auto; display: flex; gap: 6px; }
+  .chip {
+    border: 1px solid var(--border);
+    background: var(--bg-raised);
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 50px;
+    cursor: pointer;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text-primary); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: white; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    text-align: left;
+    padding: 8px 16px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: var(--bg-primary);
+    z-index: 1;
+  }
+  tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.08s; }
+  tbody tr:hover { background: var(--bg-surface); }
+  td {
+    padding: 10px 16px;
+    vertical-align: middle;
+  }
+  td .title { font-weight: 500; }
+  td .sub { color: var(--text-secondary); font-size: 12px; }
+  .badge {
+    display: inline-row;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+  }
+  .badge.open { background: #252a12; color: var(--success); }
+  .badge.in-progress { background: #2a2410; color: var(--warn); }
+  .badge.done { background: #1f2226; color: var(--text-secondary); text-decoration: line-through; }
+  .priority-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .priority-0 { background: var(--text-secondary); }
+  .priority-1 { background: var(--warn); }
+  .priority-2 { background: var(--danger); }
+  .priority-4 { background: var(--accent); }
+  .assigned { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  .avatar {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+    background: #4b5563;
+  }
+  aside {
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    padding: 14px;
+    overflow: auto;
+  }
+  aside h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  aside .field { margin-bottom: 14px; }
+  aside label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+  aside .value, aside textarea, aside input {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 6px 8px;
+    border-radius: 5px;
+    font-family: var(--font);
+    font-size: 13px;
+    width: 100%;
+    resize: vertical;
+  }
+  aside textarea { min-height: 90px; }
+  footer {
+    grid-column: 1 / -1;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 14px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+  }
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    padding: 16px;
+  }
+  .column {
+    background: var(--bg-surface);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+  }
+  .column-head {
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+  }
+  .column-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card .title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .card .meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-secondary); }
+  .tabs { display: flex; gap: 4px; }
+  .tab {
+    background: var(--bg-raised);
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .tab.active { background: var(--bg-primary); color: var(--text-primary); border-color: var(--border); }
+  textarea, input { outline: none; }
+  textarea:focus, input:focus { border-color: var(--accent); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #2c303a; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1><span class="icon">T</span> Taxos AI</h1>
+    <input id="search" class="search" placeholder="Search by title, tag, or ID…" autocomplete="off" />
+    <div class="header-actions">
+      <button class="btn" onclick="exportCSV()">Export CSV</button>
+      <button class="btn primary" onclick="openCreate()">+ New issue</button>
+    </div>
+  </header>
 
-function init(){
-  const saved = localStorage.getItem('taxos_user');
-  if(saved) state.user = JSON.parse(saved);
-  buildNav();
-  navigate(state.route);
-  if(!localStorage.getItem('taxos_data_seeded')){seedDemoData();localStorage.setItem('taxos_data_seeded','1')}
+  <nav id="nav"></nav>
+
+  <section class="main" id="main"></section>
+
+  <aside id="detail"></aside>
+
+  <footer>
+    <span id="status-line">All systems nominal.</span>
+    <span>Linear-style SPA · v0.1.0</span>
+  </footer>
+</div>
+
+<script>
+const state = {
+  project: 'all',
+  filter: 'all',
+  status: 'all',
+  query: '',
+  selected: null,
+};
+
+const data = {
+  projects: [
+    { id: 'filing-2024', name: 'FY 2024 Filing', color: '#5e6ad2', icon: 'FaFolder' },
+    { id: 'filing-2025', name: 'FY 2025 Filing', color: '#4ade80', icon: 'FaFolder' },
+    { id: 'automation', name: 'Automation', color: '#fbbf24', icon: 'FaRobot' },
+    { id: 'compliance', name: 'Compliance', color: '#f87171', icon: 'Shield' },
+    { id: 'policy', name: 'Policy Engine', color: '#8b93f7', icon: 'Book' },
+  ],
+  users: [
+    { id: 'u1', name: 'Priya Sharma', initials: 'PS', color: '#2563eb' },
+    { id: 'u2', name: 'Alex Chen', initials: 'AC', color: '#059669' },
+    { id: 'u3', name: 'Jordan Lee', initials: 'JL', color: '#d97706' },
+    { id: 'u4', name: 'Samira Patel', initials: 'SP', color: '#7c3aed' },
+  ],
+  labels: [
+    { id: 'tax', name: 'Tax', color: '#5e6ad2' },
+    { id: 'accounting', name: 'Accounting', color: '#4ade80' },
+    { id: 'audit', name: 'Audit', color: '#fbbf24' },
+    { id: 'legal', name: 'Legal', color: '#f87171' },
+    { id: 'automation', name: 'Automation', color: '#8b93f7' },
+    { id: 'rnd', name: 'R&D', color: '#f472b6' },
+  ],
+  issues: [
+    { id: 'TAX-1', title: 'Reconcile Q1 federal journal entries', project: 'filing-2024', status: 'done', priority: 1,
+      assignee: 'u1', labels: ['tax','accounting'], due: '2024-04-15', desc: 'Ensure all Q1 federal filings match GL detail.' },
+    { id: 'TAX-2', title: 'Review state nexus for new NY revenue streams', project: 'filing-2024', status: 'in-progress', priority: 2,
+      assignee: 'u2', labels: ['tax','legal'], due: '2024-05-30', desc: 'Determine if NY nexus triggers for SaaS revenue.' },
+    { id: 'TAX-3', title: 'Finalize 1099-K reconciliation for marketplace sellers', project: 'filing-2024', status: 'open', priority: 4,
+      assignee: null, labels: ['accounting','audit'], due: '2024-06-10', desc: 'Match payment processor records to issued 1099-Ks.' },
+    { id: 'TAX-4', title: 'Build automated liability accrual workbook', project: 'automation', status: 'open', priority: 4,
+      assignee: 'u3', labels: ['automation','accounting'], due: '2024-07-01', desc: 'Use prior-year schedule to project FY25 liabilities.' },
+    { id: 'TAX-5', title: 'Consolidated return filing: prepare intercompany eliminations', project: 'filing-2025', status: 'open', priority: 4,
+      assignee: 'u4', labels: ['tax'], due: '2024-08-15', desc: 'Draft elimination entries for consolidated return.' },
+    { id: 'TAX-6', title: 'Update transfer pricing documentation for APAC ops', project: 'compliance', status: 'open', priority: 2,
+      assignee: 'u2', labels: ['legal','tax'], due: '2024-09-01', desc: 'Maintain contemporaneous docs per OECD guidance.' },
+    { id: 'TAX-7', title: 'Design policy engine for capturable tax engine rules', project: 'policy', status: 'in-progress', priority: 4,
+      assignee: 'u3', labels: ['automation','rnd'], due: '2025-01-15', desc: 'Architect rule DSL and versioned policy store.' },
+    { id: 'TAX-8', title: 'Run Q2 tax provision analysis', project: 'filing-2024', status: 'in-progress', priority: 1,
+      assignee: 'u1', labels: ['tax','accounting'], due: '2024-07-10', desc: 'Update provision model with Q2 income.' },
+    { id: 'TAX-9', title: 'Audit R&D credit study methodology', project: 'compliance', status: 'open', priority: 1,
+      assignee: null, labels: ['audit','rnd'], due: '2024-10-30', desc: 'Review qualified research expenses and federal credit.' },
+    { id: 'TAX-10', title: 'Automate sales tax rate lookup from jurisdiction list', project: 'automation', status: 'done', priority: 3,
+      assignee: 'u4', labels: ['automation'], due: '2024-06-01', desc: 'Pull latest rates and cache for SUT app.' },
+    { id: 'TAX-11', title: 'Draft FY24 ESOP valuation memo for tax credit', project: 'policy', status: 'open', priority: 3,
+      assignee: 'u1', labels: ['tax'], due: '2024-12-01', desc: 'Document valuation and eligibility for federal credit.' },
+    { id: 'TAX-12', title: 'Prepare intercompany AP/AR settlement schedule', project: 'filing-2025', status: 'in-progress', priority: 3,
+      assignee: 'u2', labels: ['accounting','audit'], due: '2024-09-15', desc: 'Final schedule before consolidated return draft.' },
+    { id: 'TAX-13', title: 'Build FY24 effective tax rate waterfall report', project: 'filing-2024', status: 'open', priority: 1,
+      assignee: null, labels: ['accounting','audit'], due: '2024-07-25', desc: 'Bridge GAAP to cash tax rate for footnote.' },
+    { id: 'TAX-14', title: 'Refactor entity mapping for multi-jurisdiction income', project: 'automation', status: 'open', priority: 2,
+      assignee: 'u3', labels: ['automation','rnd'], due: '2025-02-15', desc: 'Improve accuracy of split for allocable income.' },
+    { id: 'TAX-15', title: 'Set data retention policy for tax records', project: 'compliance', status: 'open', priority: 1,
+      assignee: 'u4', labels: ['legal'], due: '2024-11-01', desc: 'Outline retention timeframe and esoteric state rules.' },
+  ],
+};
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
-function toggleSidebar(){document.getElementById('sidebar').classList.toggle('collapsed')}
-function filterNav(q){const nav=document.getElementById('nav');nav.innerHTML='';buildNav(q)}
-function getFilter(q){if(!q) return Object.entries(ROUTES);return Object.entries(ROUTES).filter(([k,v])=>((v.title+(v.icon||'')).toLowerCase().includes(q.toLowerCase())))}
-function buildNav(filter=''){
-  const nav=document.getElementById('nav');
-  let html='';
-  let lastSection='';
-  getFilter(filter).forEach(([key, mod])=>{
-    if(mod.section!==lastSection){lastSection=mod.section;html+=`<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:12px 12px 6px">${mod.section}</div>`}
-    html+=`<a href="#" onclick="navigate('${key}')" class="${state.route===key?'active':''}"><span class="icon">${mod.icon}</span><span>${mod.title}</span></a>`
+function daysUntil(d) {
+  if (!d) return null;
+  const diff = (new Date(d) - Date.now()) / 864e5;
+  return Math.ceil(diff);
+}
+function dayColor(d) {
+  const n = daysUntil(d);
+  if (n === null) return '';
+  if (n < -7) return 'var(--danger)';
+  if (n < 0) return 'var(--warn)';
+  if (n < 7) return 'var(--warn)';
+  return '';
+}
+function esc(s) { return String(s||'').replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+
+function userById(id){
+  const u=data.users.find(u=>u.id===id);
+  return u?`<span class="assigned"><span class="avatar" style="background:${u.color}">${u.initials}</span>${esc(u.name)}</span>`:'Unassigned';
+}
+
+const counts = {
+  'all': data.issues.length,
+  'open': data.issues.filter(i=>i.status==='open').length,
+  'in-progress': data.issues.filter(i=>i.status==='in-progress').length,
+  'done': data.issues.filter(i=>i.status==='done').length,
+  'filing-2024': data.issues.filter(i=>i.project==='filing-2024').length,
+  'filing-2025': data.issues.filter(i=>i.project==='filing-2025').length,
+  'automation': data.issues.filter(i=>i.project==='automation').length,
+  'compliance': data.issues.filter(i=>i.project==='compliance').length,
+  'policy': data.issues.filter(i=>i.project==='policy').length,
+};
+
+function navProjects(){
+  const items = ['all','filing-2024','filing-2025','automation','compliance','policy'].map(k=>{
+    const name = k==='all'?'All projects': data.projects.find(p=>p.id===k)?.name || k;
+    return `<button class="${state.project===k?'active':''}" onclick="setProject('${k}')${k!=='all'?`;setStatus('all')`:''}">
+      ${k==='all'?'▸':''} ${name}<span class="count">${counts[k]||0}</span>
+    </button>`;
   });
-  html+=`<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:12px 12px 6px;margin-top:8px">Modules</div>`;
-  Object.entries(MODULES).forEach(([key,mod])=>{
-    if(filter && !((mod.title+mod.icon).toLowerCase().includes(filter.toLowerCase()))) return;
-    html+=`<a href="#" onclick="navigate('${key}')" style="opacity:.7"><span class="icon">${mod.icon}</span><span>${mod.title}</span></a>`
-  });
-  if(state.user){html+=`<div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;font-size:11px;color:var(--muted)">Signed in as ${state.user.email}</div>`}
-  nav.innerHTML=html;
+  return `<section>
+    <div class="title">Projects</div>
+    <section>${items}</section>
+    <section class="title">Views</section>
+    ${['all','open','in-progress','done'].map(s=>
+      `<button class="${state.status===s?'active':''}" onclick="setStatus('${s}')">
+        ▸ ${s==='all'?'All':s==='in-progress'?'In Progress':s==='done'?'Done':s==='open'?'Open':s}
+        <span class="count">${counts[s]||0}</span>
+      </button>`
+    ).join('')}
+  </section>`;
 }
-function navigate(route){
-  state.route=route;
-  buildNav(document.querySelector('.search')?.value||'');
-  const page=pages[route] || pages['dashboard'];
-  document.getElementById('content').innerHTML=page();
+
+function listIssues(issues) {
+  if (!issues.length) {
+    return '<div class="empty-state"><p>No issues match.</p></div>';
+  }
+  return `<table>
+    <thead>
+      <tr>
+        <th></th><th>ID</th><th>Title</th><th>Status</th><th>Priority</th><th>Assignee</th><th>Due</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${issues.map(issue=>{
+        const project = data.projects.find(p=>p.id===issue.project);
+        const label = issue.labels.slice(0,1).map(l=>`<span class="badge ${issue.status}">${l}</span>`).join(' ');
+        return `<tr onclick="selectIssue('${issue.id}')">
+          <td><span class="priority-dot priority-${issue.priority}"></span></td>
+          <td><span class="sub">${issue.id}</span></td>
+          <td><div class="title">${esc(issue.title)}</div><div style="margin-top:4px">${label}</div></td>
+          <td><span class="badge ${issue.status}">${issue.status==='in-progress'?'In Progress':issue.status==='done'?'Done':'Open'}</span></td>
+          <td><span class="sub">P${issue.priority}</span></td>
+          <td>${userById(issue.assignee)}</td>
+          <td style="color:${dayColor(issue.due)}">${fmtDate(issue.due)}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
 }
-function seedDemoData(){localStorage.setItem('taxos_revenue',JSON.stringify([450000,520000,480000,610000,590000,640000,680000,710000,690000,750000,800000,820000]));
-localStorage.setItem('taxos_expenses',JSON.stringify([320000,360000,340000,400000,390000,420000,430000,440000,440000,460000,470000,480000]));
-localStorage.setItem('taxos_invoices',JSON.stringify([
-  {id:'1',client:'Acme Corp',amount:125000,status:'paid',date:'2025-04-01'},
-  {id:'2',client:'Beta Ltd',amount:89000,status:'pending',date:'2025-04-05'},
-  {id:'3',client:'Gamma Inc',amount:210000,status:'overdue',date:'2025-03-15'},
-  {id:'4',client:'Delta Pvt',amount:67000,status:'paid',date:'2025-04-10'},
-]));
-localStorage.setItem('taxos_expenses_list',JSON.stringify([
-  {category:'Rent',amount:45000,date:'2025-04-01'},
-  {category:'Salary',amount:180000,date:'2025-04-01'},
-  {category:'Marketing',amount:32000,date:'2025-04-05'},
-  {category:'Software',amount:8500,date:'2025-04-10'},
-  {category:'Travel',amount:12000,date:'2025-04-12'},
-]));
-}
-function getRevenue(){return JSON.parse(localStorage.getItem('taxos_revenue')||'[]')}
-function getExpenses(){return JSON.parse(localStorage.getItem('taxos_expenses')||'[]')}
-function getInvoices(){return JSON.parse(localStorage.getItem('taxos_invoices')||'[]')}
-function currency(n){return '₹'+n.toLocaleString('en-IN')}
-function auth(){return state.user}
-function pages = {
-  dashboard(){
-    const revenue=getRevenue(), expenses=getExpenses();
-    const totalRevenue=revenue.reduce((a,b)=>a+b,0);
-    const totalExpenses=expenses.reduce((a,b)=>a+b,0);
-    const profit=totalRevenue-totalExpenses;
-    const tax=profit>0?profit*0.30:0;
-    return `<div class="kpi-grid">
-      <div class="kpi"><div class="label">Revenue</div><div class="value">${currency(totalRevenue)}</div><div class="change" style="color:#4ade80">+12.5% ↑</div></div>
-      <div class="kpi"><div class="label">Expenses</div><div class="value">${currency(totalExpenses)}</div><div class="change" style="color:#f87171">+8.2% ↑</div></div>
-      <div class="kpi"><div class="label">Net Profit</div><div class="value">${currency(profit)}</div><div class="change" style="color:#4ade80">+24.1% ↑</div></div>
-      <div class="kpi"><div class="label">Est. Tax</div><div class="value">${currency(tax)}</div><div class="change">New Regime</div></div>
-    </div>
-    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div><h3 style="font-size:14px;font-weight:600">Revenue vs Expenses</h3><p style="font-size:11px;color:var(--muted);margin-top:2px">Last 12 months</p></div>
-      <select onchange="alert('Range selected')" style="width:auto"><option>Last 12 months</option><option>Last 6 months</option><option>YTD</option></select>
-    </div>
-    <canvas id="mainChart" style="max-height:260px"></canvas></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      <div class="card"><h3 style="font-size:14px;font-weight:600;margin-bottom:12px">Compliance Score</h3>
-        <div style="display:flex;align-items:center;gap:16px"><div style="width:100px;height:100px;border-radius:50%;background:conic-gradient(#5e6ad2 85%, #26272a 85%);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700">85</div><div style="font-size:12px;color:var(--muted)">Good — 3 upcoming filings</div></div>
-        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
-          <div style="display:flex;justify-content:space-between;font-size:12px"><span>GST</span><span style="color:#4ade80">Due Apr 20</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:12px"><span>TDS Q4</span><span style="color:#facc15">Due May 31</span></div>
-          <div style="display:flex;justify-content:space-between;font-size:12px"><span>ITR</span><span style="color:var(--muted)">Jul 31</span></div>
+
+function kanbanIssues(issues) {
+  const groups = { open:[], 'in-progress':[], done:[] };
+  issues.forEach(i=>{ if (groups[i.status]) groups[i.status].push(i); });
+  return `<div class="kanban">
+    ${Object.entries(groups).map(([status, items]) => `
+      <div class="column">
+        <div class="column-head">
+          <span>${status==='in-progress'?'In Progress':status==='done'?'Done':'Open'}</span>
+          <span class="count">${items.length}</span>
+        </div>
+        <div class="column-body">
+          ${items.map(i=>`<div class="card" onclick="selectIssue('${i.id}')">
+            <div class="title">${esc(i.title)}</div>
+            <div class="meta"><span>${i.id}</span><span>${fmtDate(i.due)}</span></div>
+          </div>`).join('')}
         </div>
       </div>
-      <div class="card"><h3 style="font-size:14px;font-weight:600;margin-bottom:12px">AI Insights</h3>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#5e6ad2">Tax Optimization:</strong> Switching to new regime saves ₹42,500/year</div>
-          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#4ade80">GST:</strong> Missed ITC of ₹18,240 detected — file in next GSTR-3B</div>
-          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#facc15">Cash Flow:</strong> Q3 burn rate increasing — consider early collections</div>
-          <div style="padding:10px;background:#1a1c20;border-radius:6px;font-size:12px"><strong style="color:#f87171">Alert:</strong> GST GSTR-1 due in 5 days — file before Apr 11</div>
-        </div>
-      </div>
-    </div>`;
-  },
-  tax(){
-    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:4px">Tax Analysis</h2><p style="color:var(--muted);font-size:12px;margin-bottom:16px">Compare old vs new regime · FY 2025-26</p>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-        <div><label style="font-size:11px;color:var(--muted)">Total Income (₹)</label><input type="number" id="income" value="1200000" oninput="calcTax()"/></div>
-        <div><label style="font-size:11px;color:var(--muted)">Current Deductions (₹)</label><input type="number" id="ded" value="180000" oninput="calcTax()"/></div>
-      </div>
-      <div id="taxResult" class="card"></div></div>`;
-  },
-  gst(){
-    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">GST Reconciliation</h2>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
-        <div><label style="font-size:11px;color:var(--muted)">GSTR-1 Upload</label><div style="border:2px dashed var(--border);padding:32px;text-align:center;border-radius:8px;color:var(--muted);font-size:12px">Drop CSV/Excel here<br>or <span style="color:var(--primary);cursor:pointer">browse</span></div></div>
-        <div><label style="font-size:11px;color:var(--muted)">Purchase Register</label><div style="border:2px dashed var(--border);padding:32px;text-align:center;border-radius:8px;color:var(--muted);font-size:12px">Drop CSV/Excel here<br>or <span style="color:var(--primary);cursor:pointer">browse</span></div></div>
-      </div>
-      <button class="btn" onclick="alert('Reconciling...')">Run Reconciliation</button>
-      <div id="gstResult"></div></div>`;
-  },
-  compliance(){
-    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Compliance Calendar</h2>
-      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="kpi"><div class="label">Compliance Score</div><div class="value">85/100</div><div class="change" style="color:#4ade80">Good</div></div>
-        <div class="kpi"><div class="label">Upcoming</div><div class="value">5</div><div class="change">Next 30 days</div></div>
-        <div class="kpi"><div class="label">Overdue</div><div class="value">0</div><div class="change" style="color:#4ade80">On track</div></div>
-      </div>
-      <table><thead><tr><th>Filing</th><th>Due Date</th><th>Status</th><th>Action</th></tr></thead><tbody>
-        <tr><td>GSTR-1 (Mar 2025)</td><td>Apr 11, 2025</td><td><span style="color:#facc15">Upcoming</span></td><td><button class="btn">File Now</button></td></tr>
-        <tr><td>GSTR-3B (Mar 2025)</td><td>Apr 20, 2025</td><td><span style="color:var(--muted)">15 days left</span></td><td><button class="btn-secondary">Schedule</button></td></tr>
-        <tr><td>TDS Q4 Payment</td><td>May 31, 2025</td><td><span style="color:#4ade80">On track</span></td><td><button class="btn-secondary">Remind</button></td></tr>
-        <tr><td>ITR Filing</td><td>Jul 31, 2025</td><td><span style="color:var(--muted)">102 days left</span></td><td><button class="btn-secondary">Prep</button></td></tr>
-      </tbody></table></div>`;
-  },
-  invoices(){
-    const invs=getInvoices();
-    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-      <h2 style="font-size:18px;font-weight:600">Invoices</h2><button class="btn">+ New Invoice</button></div>
-      <table><thead><tr><th>Invoice</th><th>Client</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody>
-        ${invs.map(i=>`<tr><td>${i.id}</td><td>${i.client}</td><td>${currency(i.amount)}</td><td>${i.date}</td><td><span style="color:${i.status==='paid'?'#4ade80':i.status==='overdue'?'#f87171':'#facc15'}">${i.status}</span></td></tr>`).join('')}
-      </tbody></table></div>`;
-  },
-  cashflow(){
-    const rev=getRevenue(),exp=getExpenses();
-    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Cash Flow Forecast</h2>
-      <canvas id="cfChart" style="max-height:280px"></canvas></div>`;
-  },
-  audit(){
-    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Audit & Risk</h2>
-      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
-        <div class="kpi"><div class="label">Risk Score</div><div class="value">92/100</div><div class="change" style="color:#4ade80">Low Risk</div></div>
-        <div class="kpi"><div class="label">Open Findings</div><div class="value">2</div><div class="change">Medium priority</div></div>
-        <div class="kpi"><div class="label">Last Scan</div><div class="value">Today</div><div class="change">Real-time</div></div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
-        <div style="padding:12px;background:#1a1c20;border-radius:6px;border-left:3px solid #facc15"><strong>Unusual expense detected</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">Marketing spend 2.3σ above avg — review for duplicates</div></div>
-        <div style="padding:12px;background:#1a1c20;border-radius:6px;border-left:3px solid #f87171"><strong>Missing receipt</strong><div style="font-size:11px;color:var(--muted);margin-top:4px">3 expenses >₹5k without supporting docs</div></div>
-      </div></div>`;
-  },
-  settings(){
-    return `<div class="card"><h2 style="font-size:18px;font-weight:600;margin-bottom:16px">Settings</h2>
-      <div style="display:grid;gap:12px;max-width:400px">
-        <div><label style="font-size:11px;color:var(--muted)">Business Name</label><input value="Demo Enterprises Pvt Ltd"/></div>
-        <div><label style="font-size:11px;color:var(--muted)">GSTIN</label><input value="27AABCT1234R1ZP"/></div>
-        <div><label style="font-size:11px;color:var(--muted)">PAN</label><input value="AABCT1234R"/></div>
-        <div><label style="font-size:11px;color:var(--muted)">State</label><select><option>Maharashtra</option><option>Karnataka</option><option>Delhi</option><option>Tamil Nadu</option></select></div>
-        <div style="margin-top:8px"><button class="btn">Save Profile</button></div>
-      </div></div>`;
+    `).join('')}
+  </div>`;
+}
+
+function detailView(issue) {
+  if (!issue) {
+    return `<aside>
+      <h3>Issue detail</h3>
+      <div class="empty-state" style="padding-top:30px"><p>Select an issue to view details.</p></div>
+    </aside>`;
   }
-};
+  const project = data.projects.find(p=>p.id===issue.project);
+  return `<aside>
+    <h3>${esc(issue.id)}</h3>
+    <div class="field">
+      <label>Title</label>
+      <input id="dt-title" value="${esc(issue.title)}" />
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <textarea id="dt-desc">${esc(issue.desc)}</textarea>
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="dt-status" style="background:var(--bg-raised);color:var(--text-primary);border:1px solid var(--border);padding:6px;border-radius:5px;width:100%;">
+        ${['open','in-progress','done'].map(s=>`<option value="${s}" ${issue.status===s?'selected':''}>${s==='in-progress'?'In Progress':s==='done'?'Done':'Open'}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label>Priority (1–4)</label>
+      <input type="number" id="dt-priority" value="${issue.priority}" min="1" max="4" />
+    </div>
+    <div class="field">
+      <label>Due Date</label>
+      <input type="date" id="dt-due" value="${issue.due||''}" />
+    </div>
+    <div class="field">
+      <label>Assignee</label>
+      <select id="dt-assignee" style="background:var(--bg-raised);color:var(--text-primary);border:1px solid var(--border);padding:6px;border-radius:5px;width:100%;">
+        <option value="">— Unassigned —</option>
+        ${data.users.map(u=>`<option value="${u.id}" ${issue.assignee===u.id?'selected':''}>${u.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="field">
+      <label>Labels</label>
+      <input id="dt-labels" value="${issue.labels.join(', ')}" placeholder="comma,separated" />
+    </div>
+    <button class="btn primary" style="width:100%;margin-top:6px;" onclick="saveIssue('${issue.id}')">Save</button>
+    <button class="btn" style="width:100%;margin-top:6px;" onclick="deleteIssue('${issue.id}')">Delete</button>
+  </aside>`;
+}
 
-function renderCharts(){
-  if(state.route==='dashboard'){
-    const ctx=document.getElementById('mainChart');
-    if(!ctx) return;
-    const rev=getRevenue(),exp=getExpenses(),labels=Array.from({length:12},(_,i)=>['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'][i]);
-    new Chart(ctx,{type:'line',data:{labels,datasets:[
-      {label:'Revenue',data:rev,borderColor:'#5e6ad2',backgroundColor:'rgba(94,106,210,.1)',fill:true,tension:.3,borderWidth:2},
-      {label:'Expenses',data:exp,borderColor:'#ff5c7c',backgroundColor:'transparent',tension:.3,borderWidth:2}
-    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#8a8f98',font:{size:11}}}},scales:{x:{ticks:{color:'#8a8f98',font:{size:10}},grid:{color:'#1f2125'}},y:{ticks:{color:'#8a8f98',font:{size:10},callback:v=>'₹'+v/1e5+'L'},grid:{color:'#1f2125'}}}}
-    });
-  } else if(state.route==='cashflow'){
-    const ctx=document.getElementById('cfChart');
-    if(!ctx)return;
-    const labels=['May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
-    new Chart(ctx,{type:'bar',data:{labels,datasets:[
-      {label:'Revenue',data:[82,85,88,91,89,93,95,98,100,102,105,108],backgroundColor:'#5e6ad2'},
-      {label:'Expenses',data:[72,74,73,76,77,78,79,80,81,82,83,84],backgroundColor:'#ff5c7c'}
-    ]},options:{responsive:true,plugins:{legend:{labels:{color:'#8a8f98'}}},scales:{x:{ticks:{color:'#8a8f98'},grid:{color:'#1f2125'}},y:{ticks:{color:'#8a8f98',callback:v=>'₹'+v+'K'},grid:{color:'#1f2125'}}}});
+function setProject(project) {
+  state.project = project;
+  state.selected = null;
+  render();
+}
+function setStatus(status) {
+  state.status = status;
+  state.selected = null;
+  render();
+}
+function selectIssue(id) {
+  state.selected = state.selected===id ? null : id;
+  render();
+}
+
+function filtered() {
+  const q = state.query.trim().toLowerCase();
+  return data.issues.filter(i => {
+    const projOk = state.project === 'all' || i.project === state.project;
+    const statusOk = state.status === 'all' || i.status === state.status;
+    const qOk = !q || i.title.toLowerCase().includes(q) || i.id.toLowerCase().includes(q) || i.labels.some(l=>l.includes(q));
+    return projOk && statusOk && qOk;
+  });
+}
+
+function render() {
+  const issues = filtered();
+  document.getElementById('nav').innerHTML = navProjects();
+  const main = document.getElementById('main');
+  const headers = `<div class="pane-header">
+    <h2>${state.status==='in-progress'?'In Progress questions':state.status==='done'?'Done questions':state.project==='all'?'All questions':(data.projects.find(p=>p.id===state.project)||{}).name||state.project}</h2>
+    <div class="filters">
+      ${['open','in-progress','done'].map(s=>`<button class="chip ${state.status===s?'active':''}" onclick="setStatus('${s}')">${s==='in-progress'?'In Progress':s}</button>`).join('')}
+    </div>
+  </div>`;
+  if (state.status==='done' && issues.some(i=>i.status==='done')) {
+    // visual grouping simplified: show list
   }
-}
-function calcTax(){
-  const income=parseFloat(document.getElementById('income').value)||0;
-  const ded=parseFloat(document.getElementById('ded').value)||0;
-  const old=taxOld(income,ded), nw=taxNew(income);
-  const save=old.total-nw.total;
-  document.getElementById('taxResult').innerHTML=`<div class="kpi-grid" style="grid-template-columns:1fr 1fr">
-    <div class="kpi"><div class="label">Old Regime</div><div class="value">${currency(old.total)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">Effective: ${old.eff}%</div></div>
-    <div class="kpi"><div class="label">New Regime</div><div class="value">${currency(nw.total)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">Effective: ${nw.ef}%</div></div>
-  </div><div style="margin-top:12px;padding:12px;background:#1a1c20;border-radius:6px;font-size:13px"><strong>Savings:</strong> ${save>0?currency(save)+' with new regime':'Same or better with old regime'}</div>`;
-}
-function taxOld(income,ded){
-  const taxable=Math.max(0,income-ded-50000);let tax=0;
-  if(taxable<=250000)tax=0;else if(taxable<=500000)tax=(taxable-250000)*.05;else if(taxable<=1e6)tax=12500+(taxable-500000)*.2;else tax=112500+(taxable-1e6)*.3;
-  let rebate=0,surcharge=0,cess=0;
-  if(income<=5e5)rebate=Math.min(tax,12500);
-  const after=max(0,tax-rebate);
-  if(taxable>5e6&&taxable<=1e7)surcharge=after*.1;else if(taxable>1e7)surcharge=after*.15;
-  cess=(after+surcharge)*.04;
-  return {total:Math.round(after+surcharge+cess),ef:income>0?Math.round((after+surcharge+cess)/income*100):0}
-}
-function taxNew(income){
-  let tax=0;if(income>4e5)tax+=(Math.min(income,8e5)-4e5)*.05;if(income>8e5)tax+=(Math.min(income,12e5)-8e5)*.1;if(income>12e5)tax+=(Math.min(income,16e5)-12e5)*.15;if(income>16e5)tax+=(Math.min(income,2e6)-16e5)*.2;if(income>2e6)tax+=(Math.min(income,24e5)-2e6)*.25;if(income>24e5)tax+=(income-24e5)*.3;
-  return {total:Math.round(tax*.96+tax*.04),ef:income>0?Math.round(tax/income*100):0}
+  main.innerHTML = headers + listIssues(issues);
+  document.getElementById('detail').innerHTML = detailView(data.issues.find(i=>i.id===state.selected));
+  document.getElementById('status-line').textContent = `Showing ${issues.length} of ${data.issues.length} issues · Project: ${state.project==='all'?'All projects':data.projects.find(p=>p.id===state.project)?.name||state.project}`;
 }
 
-function init3D(){const c=document.getElementById('bg3d');if(!c)return;const scene=new THREE.Scene(),cam=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000),renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});renderer.setSize(innerWidth,innerHeight);c.appendChild(renderer.domElement);const geo=new THREE.IcosahedronGeometry(3,1),mat=new THREE.MeshBasicMaterial({color:0x5e6ad2,wireframe:true,transparent:true,opacity:.06}),mesh=new THREE.Mesh(geo,mat);scene.add(mesh);const geo2=new THREE.RingGeometry(1.5,2.5,32),mat2=new THREE.MeshBasicMaterial({color:0x00e0c6,transparent:true,opacity:.05,side:THREE.DoubleSide}),ring=new THREE.Mesh(geo2,mat2);ring.rotation.x=Math.PI/2.5;scene.add(ring);cam.position.z=6;function animate(){requestAnimationFrame(animate);mesh.rotation.y+=.0008;mesh.rotation.x+=.0004;ring.rotation.z+=.001;renderer.render(scene,cam)}animate();addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)})}
+function saveIssue(id) {
+  const issue = data.issues.find(i=>i.id===id);
+  if (!issue) return;
+  const t = document.getElementById('dt-title').value.trim();
+  if (t) issue.title = t;
+  issue.desc = document.getElementById('dt-desc').value.trim();
+  issue.status = document.getElementById('dt-status').value;
+  issue.priority = Math.max(1, Math.min(4, parseInt(document.getElementById('dt-priority').value||'1',10)));
+  issue.due = document.getElementById('dt-due').value || null;
+  issue.assignee = document.getElementById('dt-assignee').value || null;
+  issue.labels = document.getElementById('dt-labels').value.split(',').map(s=>s.trim()).filter(Boolean);
+  render();
+}
 
-addEventListener('DOMContentLoaded',()=>{init();if(document.getElementById('mainChart'))setTimeout(renderCharts,50);setTimeout(init3D,100);
-  if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});
-});
-<\/script></body></html>
+function deleteIssue(id) {
+  if (!confirm(`Delete ${id}?`)) return;
+  data.issues = data.issues.filter(i=>i.id!==id);
+  state.selected = null;
+  render();
+}
+
+function openCreate() {
+  const pid = state.project==='all'?'filing-2024':state.project;
+  const n = data.issues.filter(i=>i.project===pid).length + 1;
+  const newId = `TAX-${data.issues.map(i=>parseInt(i.id.split('-')[1],10)).reduce((a,b)=>Math.max(a,b),0)+1}`;
+  const issue = { id: newId, title: 'Untitled question', project: pid, status:'open', priority:3, assignee:null, labels:[], due:null, desc:'' };
+  data.issues.unshift(issue);
+  state.selected = newId;
+  render();
+  setTimeout(()=>{ const el = document.getElementById('dt-title'); if(el){ el.focus(); el.select(); } }, 50);
+}
+
+function exportCSV() {
+  const issues = filtered();
+  const rows = [['ID','Title','Status','Priority','Assignee','Due','Labels','Project']];
+  issues.forEach(i=>{
+    rows.push([
+      i.id, i.title, i.status, i.priority,
+      (data.users.find(u=>u.id===i.assignee)||{}).name||'',
+      i.due||'', i.labels.join(';'), data.projects.find(p=>p.id===i.project)?.name||i.project
+    ]);
+  });
+  const blob = new Blob([rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'taxos-ai-questions.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('search').addEventListener('input', e=>{ state.query = e.target.value; render(); });
+
+render();
+</script>
+</body>
+</html>
