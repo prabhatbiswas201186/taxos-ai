@@ -73,7 +73,8 @@ class LoginRequest(BaseModel):
     password: str
 
 class OTPRequest(BaseModel):
-    email: str
+    email: Optional[str] = None
+    phone: Optional[str] = None
 
 class PasswordResetRequest(BaseModel):
     email: str
