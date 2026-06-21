@@ -1,15 +1,17 @@
 {
-  "version": 3,
-  "framework": null,
-  "functions": {
-    "api/index.py": {
-      "runtime": "python3.11",
-      "maxDuration": 30,
-      "memory": 1024
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
     }
-  },
-  "rewrites": [
-    { "source": "/api/v1/(.*)", "destination": "/api/index.py" },
-    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "routes": [
+    { "src": "/api/v1/(.*)", "dest": "api/index.py" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
