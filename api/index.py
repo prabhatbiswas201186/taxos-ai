@@ -719,44 +719,6 @@ def generate_tasks(businessId: str, legalStructure: str, state: str):
     compliance_tasks[businessId] = tasks
     return {"tasksGenerated": len(tasks)}
 
-@app.post("/api/v1/documents/upload")
-async def upload_document(userId: str = Form(...), businessId: str = Form(...), file: UploadFile = File(...)):
-    file_id = str(uuid.uuid4())
-    ext = Path(file.filename).suffix.lower()
-    if ext not in APP_CONFIG["allowedFileTypes"]:
-        raise HTTPException(400, f"File type {ext} not allowed. Allowed: {APP_CONFIG['allowedFileTypes']}")
-
-    size = 0
-    dest = UPLOAD_DIR / f"{file_id}{ext}"
-    with open(dest, "wb") as f:
-        while chunk := await file.read(8192):
-            size += len(chunk)
-            if size > APP_CONFIG["uploadMaxSize"]:
-                raise HTTPException(400, "File too large (max 10MB)")
-            f.write(chunk)
-
-    doc = {
-        "id": file_id,
-        "userId": userId,
-        "businessId": businessId,
-        "filename": file.filename,
-        "fileUrl": f"/api/v1/documents/{file_id}{ext}",
-        "fileType": ext,
-        "fileSize": size,
-        "category": "other",
-        "tags": [],
-        "createdAt": datetime.now().isoformat(),
-    }
-    documents[file_id] = doc
-    return {"document": doc}
-
-@app.get("/api/v1/documents/{filename}")
-def get_document(filename: str):
-    path = UPLOAD_DIR / filename
-    if not path.exists():
-        raise HTTPException(404)
-    return FileResponse(path)
-
 @app.post("/api/v1/invoices")
 def create_invoice(invoice: Dict):
     inv_id = str(uuid.uuid4())
