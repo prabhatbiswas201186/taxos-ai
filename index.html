@@ -49,7 +49,7 @@ async function api(path,opts={}){
 }
 
 function nav(){
-  <aside class="fixed inset-y-0 left-0 z-40 w-64 glass border-r border-white/5 transform ${state.mobileNav?'translate-x-0':'-translate-x-full'} md:translate-x-0 transition-transform">
+  return `<aside class="fixed inset-y-0 left-0 z-40 w-64 glass border-r border-white/5 transform ${state.mobileNav?'translate-x-0':'-translate-x-full'} md:translate-x-0 transition-transform">
     <div class="p-4 text-base font-bold tracking-wide">TAXOS<span class="text-indigo-400">.ai</span></div>
     <nav class="px-2 space-y-1 text-sm" id="nav"></nav>
     <div class="mt-auto p-4 text-xs text-white/50">v0.1 · India Tax AI</div>
