@@ -198,10 +198,9 @@ function renderDashboard(root){
     <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Total Tax Liability</div><div class="text-2xl font-bold mt-1" id="kpi-tax">—</div><div class="text-xs text-white/50">FY 2025-26</div></div>
     <div class="kpi p-4 rounded"><div class="text-xs text-white/60">GST Due This Month</div><div class="text-2xl font-bold mt-1" id="kpi-gst">—</div><div class="text-xs text-white/50">Upcoming filing</div></div>
     <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Compliance Score</div><div class="text-2xl font-bold mt-1" id="kpi-compliance">—</div><div class="text-xs text-white/50">Based on your filings</div></div>
-  </div><div class="mt-6 glass p-4 rounded"><div class="text-sm font-semibold mb-2">Revenue vs Expenses (12M)</div><canvas id="dashChart" height="120"></canvas></div>`);
+  </div><div class="mt-6 glass p-4 rounded"><div class="text-sm font-semibold mb-2">Revenue vs Expenses (this year)</div><div class="h-64 w-full"><canvas id="dashChart"></canvas></div></div>`);
   loadDashboard();
 }
-
 async function loadDashboard(){
   try{
     const j=await api('/dashboard/'+(state.user?.id||'test-user-1'));
@@ -219,16 +218,32 @@ function initDashChart(){
   if(!canvas || canvas.dataset.initialized) return;
   canvas.dataset.initialized='1';
   try{
+    const revenues=[1200000,1500000,1800000,1400000,1600000,1900000,1700000,2000000,2100000,1800000,2200000,2400000];
+    const expenses=[800000,900000,1000000,850000,950000,1100000,1000000,1200000,1300000,1100000,1400000,1500000];
+    const maxVal=Math.max(...revenues,...expenses);
     new Chart(canvas,{
       type:'bar',
       data:{
         labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
         datasets:[
-          {label:'Revenue',data:[120,150,180,140,160,190,170,200,210,180,220,240],backgroundColor:'#5e6ad2'},
-          {label:'Expenses',data:[80,90,100,85,95,110,100,120,130,110,140,150],backgroundColor:'#ef4444'}
+          {label:'Revenue',data:revenues,backgroundColor:'#5e6ad2'},
+          {label:'Expenses',data:expenses,backgroundColor:'#ef4444'}
         ]
       },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#e5e7eb'}}},scales:{y:{ticks:{color:'#9ca3af'}},x:{ticks:{color:'#9ca3af'}}}}
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#e5e7eb'}}},
+        scales:{
+          y:{
+            beginAtZero:true,
+            max:maxVal,
+            ticks:{color:'#9ca3af',callback:v=>'₹'+v/10000+'L'},
+            grid:{color:'rgba(255,255,255,0.06)'}
+          },
+          x:{ticks:{color:'#9ca3af',maxRotation:0},grid:{display:false}}
+        }
+      }
     });
   }catch(e){}
 }
