@@ -476,7 +476,7 @@ async function loadAudit(){
     const findings=j?.findings||j?.health?.findings||[];
     listCards('audit-result',[
       '<div class="font-semibold">Score: '+(score==='-'?'Not available':score+'/100')+'</div>',
-      (findings.length?'findings.length+' items to review':'No critical findings')
+      (findings.length?findings.length+' items to review':'No critical findings')
     ]);
   }catch(e){
     showCard('audit-result','Checklist while we review your data',[
