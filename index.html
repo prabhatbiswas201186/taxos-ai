@@ -645,10 +645,16 @@ async function uploadDoc(){
 function navigate(id){
   state.page=id;
   document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.id===id));
-  $('#page-title').textContent=modules.find(m=>m.id===id).name;
+  const mod=modules.find(m=>m.id===id);
   const r=$('#page-content');
-  ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements})[id]?.(r);
-  if(id==='settings') renderSettings();
+  if(mod){
+    $('#page-title').textContent=mod.name;
+    ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements})[id]?.(r);
+    if(id==='settings') renderSettings();
+  }else{
+    $('#page-title').textContent=id||'Page';
+    r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><div class="glass p-4 rounded text-xs text-white/60">Page not found.</div></section>`;
+  }
 }
 
 function build(root){
