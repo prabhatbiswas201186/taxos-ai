@@ -211,7 +211,7 @@ async function loadDashboard(){
     if(t) t.textContent='₹'+Math.round(j.taxSnapshot?.estimatedTax||0).toLocaleString();
     if(g) g.textContent='₹'+Math.round(j.financials?.pendingInvoices||0).toLocaleString();
     if(c) c.textContent=(j.compliance?.score??0)+'/100';
-  }catch(e){}
+  }catch(e){console.error('loadDashboard failed',e)}
   initDashChart();
 }
 function initDashChart(){
