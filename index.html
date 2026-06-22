@@ -74,7 +74,7 @@ function floatingChat(){
   if(!state.user) return '';
   return `<div class="chat-float glass rounded-2xl shadow-2xl border border-white/10 flex flex-col overflow-hidden" id="chat-float">
     <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
-      <div class="text-sm font-semibold">AI Chat / CFO</div>
+      <div class="text-sm font-semibold">Money Helper</div>
       <button onclick="toggleChat()" class="text-xs text-white/60 hover:text-white">-</button>
     </div>
     <div id="chat-box" class="flex-1 overflow-y-auto space-y-3 p-3" style="max-height:360px"></div>
@@ -276,7 +276,7 @@ async function runGst(){
     const j=await api('/api/v1/gst/reconcile',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',gstr1,gstr3b:[],purchaseRegister:purchases})});
     out.textContent=JSON.stringify(j,null,2)
   }catch(e){
-    out.textContent='Backend offline. Showing GST guidance:\n\nGSTR-1: Due 11th next month\nGSTR-3B: Due 20th next month\nITC Rules:\n- Match GSTR-2A/2B before claiming\n- Miss-match > 20%: reversed ITC liability\n- Interest: 18% on reversed ITC\n\nUpload your returns in Settings for AI analysis.';
+    out.textContent='Backend offline. Showing GST guidance:\n\nGSTR-1: Due 11th next month\nGSTR-3B: Due 20th next month\nITC Rules:\n- Match GSTR-2A/2B before claiming\n- Miss-match > 20%: reversed ITC liability\n- Interest: 18% on reversed ITC\n\nUpload your returns in Settings for analysis.';
   }
 }
 
@@ -307,16 +307,16 @@ async function runCashflow(){
   }
 }
 
-function renderAudit(root){renderModule(root,'Health Check',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">AI Auditor</div>
+function renderAudit(root){renderModule(root,'Health Check',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Health Check</div>
   <button onclick="loadAudit()" class="btn-primary rounded px-3 py-2 text-sm">Scan</button>
   <pre id="audit-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
 </div>`)}
 
 async function loadAudit(){const out=$('#audit-result');try{const j=await api('/api/v1/audit/analyze?userId='+(state.user?.id||'u1')+'&businessId=b1',{method:'POST'});
-out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Backend offline.\n\nConnect local API (port 8001) for full AI Auditor.\n\nGeneral checks:\n- Books of accounts maintained?\n- TDS deducted and deposited?\n- GST returns filed on time?\n- Reconciliation done monthly?\n- Audit u/s 44AB applicable?'}}
+out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Backend offline.\n\nConnect local API (port 8001) for full analysis.\n\nGeneral checks:\n- Books of accounts maintained?\n- TDS deducted and deposited?\n- GST returns filed on time?\n- Reconciliation done monthly?\n- Audit u/s 44AB applicable?'}}
 
 function renderChat(root){renderModule(root,'Ask a Question',`<div class="glass p-4 rounded space-y-3">
-  <div class="text-sm font-semibold">AI Chat / CFO</div>
+  <div class="text-sm font-semibold">Money Helper</div>
   <textarea id="chat-msg" class="w-full rounded p-2 h-24" placeholder="Ask about tax, GST, compliance..."></textarea>
   <button onclick="sendChat()" class="btn-primary rounded px-3 py-2 text-sm">Send</button>
   <pre id="chat-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
@@ -330,12 +330,12 @@ async function sendChat(){
   if(sb && state.user){
     await sb.from('chat_history').insert({user_id:state.user.id,role:'user',message:msg}).catch(()=>{});
   }
-  // Simple AI response logic
+  // Simple response logic
   const lower=msg.toLowerCase();
   let reply='I can help with tax, GST, compliance, and financial planning. Upload your documents in Settings and I will analyze them.';
-  if(/\b(gst|input tax credit|itc|reconcile)\b/.test(lower)) reply='For GST reconciliation, go to the GST AI module and upload your GSTR-1 and purchase register JSON. I can also help explain ITC rules.';
-  else if(/\b(tax|income tax|itr|old regime|new regime)\b/.test(lower)) reply='Use the Personal Tax AI module to compare Old vs New regime. Enter your annual income and 80C deductions to get exact tax liability.';
-  else if(/\b(compliance|due date|calendar|penalty)\b/.test(lower)) reply='Check the Compliance AI module for your filing calendar. GSTR-1 is due on the 11th, GSTR-3B on the 20th of the next month.';
+  if(/\b(gst|input tax credit|itc|reconcile)\b/.test(lower)) reply='For GST reconciliation, go to the GST Helper module and upload your GSTR-1 and purchase register JSON. I can also help explain ITC rules.';
+  else if(/\b(tax|income tax|itr|old regime|new regime)\b/.test(lower)) reply='Use the Personal Tax module to compare Old vs New regime. Enter your annual income and 80C deductions to get exact tax liability.';
+  else if(/\b(compliance|due date|calendar|penalty)\b/.test(lower)) reply='Check the Compliance Calendar module for your filing calendar. GSTR-1 is due on the 11th, GSTR-3B on the 20th of the next month.';
   else if(/\b(pan|aadhar|document|upload)\b/.test(lower)) reply='You can upload PAN, Aadhar, and financial documents in Settings. Supported formats: PDF, JPG, PNG, CSV. Files are stored securely.';
   else if(/\b(penalty|fine|late|interest)\b/.test(lower)) reply='Late fees: GSTR-3B ₹50/day (max ₹20,000). ITR late fee ₹5,000. TDS late fee ₹200/day. Interest ranges from 12% to 24%.';
   else if(/\b(80c|deduction|saving|investment)\b/.test(lower)) reply='80C limit is ₹1.5L. Options: PPF, ELSS, life insurance, NSC, home loan principal. Additional ₹50K under 80CCD(1B) for NPS.';
