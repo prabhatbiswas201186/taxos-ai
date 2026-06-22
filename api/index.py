@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Header
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, Header, Query
 from starlette.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 import os, json, uuid, re
+from io import BytesIO
 from pathlib import Path
 from supabase import create_client, Client
 
@@ -949,6 +950,114 @@ def public_supabase_config():
         "url": os.environ.get("SUPABASE_URL", ""),
         "anonKey": os.environ.get("SUPABASE_ANON_KEY", "")
     }
+
+
+# === DOCUMENT UPLOAD ===
+
+@app.post("/api/v1/documents/upload")
+async def upload_document(user_id: str = Form(...), file: UploadFile = File(...), category: str = Form("general")):
+    if not file:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    allowed = [".pdf", ".csv", ".xlsx", ".jpg", ".jpeg", ".png"]
+    ext = Path(file.filename or "file").suffix.lower()
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail=f"File type {ext} not supported. Allowed: {', '.join(allowed)}")
+
+    file_bytes = await file.read()
+    file_size = len(file_bytes)
+    if file_size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large. Max 10MB.")
+
+    mime_type = file.content_type or "application/octet-stream"
+    filename = file.filename or "document"
+
+    # Extract text from PDFs when possible
+    extracted_text = ""
+    if mime_type == "application/pdf":
+        try:
+            import pdfplumber
+            with pdfplumber.open(BytesIO(file_bytes)) as pdf:
+                extracted_text = "\n".join((page.extract_text() or "") for page in pdf.pages)
+        except Exception:
+            extracted_text = "[Could not extract text from this PDF]"
+
+    # Save locally as fallback / staging
+    safe_name = f"{uuid.uuid4()}_{filename}"
+    save_path = UPLOAD_DIR / safe_name
+    try:
+        with open(save_path, "wb") as f:
+            f.write(file_bytes)
+    except Exception:
+        save_path = None
+
+    # Try Supabase Storage
+    storage_path = f"user_documents/{user_id}/{safe_name}"
+    persisted = False
+    if supabase_client:
+        try:
+            supabase_client.storage.from_("user-documents").upload(
+                storage_path,
+                file_bytes,
+                {"content-type": mime_type},
+            )
+            persisted = True
+        except Exception:
+            persisted = False
+
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "file_name": filename,
+        "file_path": storage_path if persisted else (str(save_path) if save_path else ""),
+        "file_size": file_size,
+        "mime_type": mime_type,
+        "category": category,
+        "created_at": datetime.utcnow().isoformat(),
+        "extracted_text": extracted_text,
+        "persisted": persisted,
+    }
+
+    documents.setdefault(user_id, []).append(doc)
+    return doc
+
+
+@app.get("/api/v1/documents/{user_id}")
+def list_documents(user_id: str):
+    docs = documents.get(user_id, [])
+    return [
+        {
+            "id": d.get("id"),
+            "file_name": d.get("file_name"),
+            "file_path": d.get("file_path"),
+            "file_size": d.get("file_size"),
+            "mime_type": d.get("mime_type"),
+            "category": d.get("category"),
+            "created_at": d.get("created_at"),
+            "persisted": d.get("persisted"),
+            "extracted_text_snippet": (d.get("extracted_text") or "")[:500],
+        }
+        for d in docs
+    ]
+
+
+@app.delete("/api/v1/documents/{doc_id}")
+def delete_document(doc_id: str, user_id: str = Query(...)):
+    user_docs = documents.get(user_id, [])
+    doc = next((d for d in user_docs if d["id"] == doc_id), None)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    documents[user_id] = [d for d in user_docs if d["id"] != doc_id]
+
+    if supabase_client and doc.get("persisted"):
+        try:
+            supabase_client.storage.from_("user-documents").remove([doc.get("file_path")])
+        except Exception:
+            pass
+
+    return {"success": True, "deleted_id": doc_id}
+
 
 if __name__ == "__main__":
     import uvicorn
