@@ -20,13 +20,13 @@ pre{white-space:pre-wrap;word-break:break-word}
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundled.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const API_BASE='/api/v1';
+const API_BASE='';
 let sb=null;
 let SUPABASE_URL='';
 let SUPABASE_ANON_KEY='';
 async function initSupabase(){
   try{
-    const j=await api('/api/v1/config/supabase');
+    const j=await api('/config/supabase');
     SUPABASE_URL=j.url||'';
     SUPABASE_ANON_KEY=j.anonKey||'';
     if(window.supabase&&typeof window.supabase.createClient==='function'&&SUPABASE_URL&&SUPABASE_ANON_KEY){
@@ -204,14 +204,14 @@ function renderDashboard(root){
 
 async function loadDashboard(){
   try{
-    const j=await api('/api/v1/dashboard/'+(state.user?.id||'test-user-1'));
+    const j=await api('/dashboard/'+(state.user?.id||'test-user-1'));
     const t=document.getElementById('kpi-tax');
     const g=document.getElementById('kpi-gst');
     const c=document.getElementById('kpi-compliance');
     if(t) t.textContent='₹'+Math.round(j.taxSnapshot?.estimatedTax||0).toLocaleString();
     if(g) g.textContent='₹'+Math.round(j.financials?.pendingInvoices||0).toLocaleString();
     if(c) c.textContent=(j.compliance?.score??0)+'/100';
-  }catch(e){console.error('loadDashboard failed',e)}
+  }catch(e){}
   initDashChart();
 }
 function initDashChart(){
@@ -393,7 +393,7 @@ async function runGst(){
   try{gstr1=JSON.parse($('#gstr1').value||'[]')}catch(e){}
   try{purchases=JSON.parse($('#purchases').value||'[]')}catch(e){}
   try{
-    const j=await api('/api/v1/gst/reconcile',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',gstr1,gstr3b:[],purchaseRegister:purchases})});
+    const j=await api('/gst/reconcile',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',gstr1,gstr3b:[],purchaseRegister:purchases})});
     const total=Math.round((j?.totalTax||0));
     const matched=j?.matched||[];
     const missing=j?.missing||[];
@@ -420,7 +420,7 @@ function renderCompliance(root){renderModule(root,'Compliance Calendar',`<div cl
 async function loadCompliance(){
   const out=$('#compliance-result');
   try{
-    const j=await api('/api/v1/compliance/check',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',businessId:'b1',filings:{}})});
+    const j=await api('/compliance/check',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',businessId:'b1',filings:{}})});
     listCards('compliance-result',[
       'GST returns: GSTR-1 + GSTR-3B filing is active.',
       'Income tax: ITR due date reminders are set.',
@@ -453,7 +453,7 @@ async function runCashflow(){
   try{rev=JSON.parse($('#cf-rev').value||'[]')}catch(e){}
   try{exp=JSON.parse($('#cf-exp').value||'[]')}catch(e){}
   try{
-    const j=await api('/api/v1/cashflow/forecast',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',revenueHistory:rev,expenseHistory:exp,period:'365d'})});
+    const j=await api('/cashflow/forecast',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',revenueHistory:rev,expenseHistory:exp,period:'365d'})});
     const trend=j?.forecast?.trend||'No trend available';
     const peak=j?.forecast?.peakMonth||'—';
     listCards('cf-result',[
@@ -479,7 +479,7 @@ function renderAudit(root){renderModule(root,'Health Check',`<div class="glass p
 async function loadAudit(){
   const out=$('#audit-result');
   try{
-    const j=await api('/api/v1/audit/analyze?userId='+(state.user?.id||'u1')+'&businessId=b1',{method:'POST'});
+    const j=await api('/audit/analyze?userId='+(state.user?.id||'u1')+'&businessId=b1',{method:'POST'});
     const score=j?.score??j?.health?.score??'-';
     const findings=j?.findings||j?.health?.findings||[];
     listCards('audit-result',[
@@ -583,17 +583,17 @@ async function adminTab(tab){
   if(tab==='users'){
     document.querySelectorAll('[id^=admin-tab-]').forEach(b=>b.classList.remove('btn-primary'));const tb=$('#admin-tab-users');if(tb)tb.classList.add('btn-primary');
     content.innerHTML=`<div class="glass p-4 rounded space-y-2"><div class="text-sm font-semibold">Users</div><pre id="admin-users" class="text-xs bg-black/30 p-3 rounded h-96 overflow-auto">Loading…</pre></div>`;
-    try{const j=await api('/api/v1/admin/users',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-users').textContent=JSON.stringify(j.users,null,2);buildUserActions(j.users)}
+    try{const j=await api('/admin/users',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-users').textContent=JSON.stringify(j.users,null,2);buildUserActions(j.users)}
     catch(e){content.innerHTML=`<div class="glass p-4 rounded text-xs text-red-300">${escape(e.message)}</div>`}
   }else if(tab==='config'){
     document.querySelectorAll('[id^=admin-tab-]').forEach(b=>b.classList.remove('btn-primary'));const tb=$('#admin-tab-config');if(tb)tb.classList.add('btn-primary');
     content.innerHTML=`<div class="glass p-4 rounded space-y-2"><div class="text-sm font-semibold">Config</div><pre id="admin-config" class="text-xs bg-black/30 p-3 rounded h-96 overflow-auto">Loading…</pre></div>`;
-    try{const j=await api('/api/v1/admin/config',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-config').textContent=JSON.stringify(j,null,2)}
+    try{const j=await api('/admin/config',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-config').textContent=JSON.stringify(j,null,2)}
     catch(e){content.innerHTML=`<div class="glass p-4 rounded text-xs text-red-300">${escape(e.message)}</div>`}
   }else if(tab==='stats'){
     document.querySelectorAll('[id^=admin-tab-]').forEach(b=>b.classList.remove('btn-primary'));const tb=$('#admin-tab-stats');if(tb)tb.classList.add('btn-primary');
     content.innerHTML=`<div class="glass p-4 rounded space-y-2"><div class="text-sm font-semibold">Stats</div><pre id="admin-stats" class="text-xs bg-black/30 p-3 rounded h-96 overflow-auto">Loading…</pre></div>`;
-    try{const j=await api('/api/v1/admin/stats',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-stats').textContent=JSON.stringify(j,null,2)}
+    try{const j=await api('/admin/stats',{headers:{Authorization:'Bearer '+localStorage.getItem('admin_token')}});$('#admin-stats').textContent=JSON.stringify(j,null,2)}
     catch(e){content.innerHTML=`<div class="glass p-4 rounded text-xs text-red-300">${escape(e.message)}</div>`}
   }
 }
@@ -614,7 +614,7 @@ async function adminUpdateUser(){
   const body={userId};
   if(subscription) body.subscription=subscription;
   if(modules) body.activeModules=modules.split(',');
-  try{const j=await api('/api/v1/admin/users/update',{method:'POST',headers:{Authorization:'Bearer '+localStorage.getItem('admin_token'),'Content-Type':'application/json'},body:JSON.stringify(body)});$('#admin-update-result').textContent=JSON.stringify(j,null,2);alert('User updated')}
+  try{const j=await api('/admin/users/update',{method:'POST',headers:{Authorization:'Bearer '+localStorage.getItem('admin_token'),'Content-Type':'application/json'},body:JSON.stringify(body)});$('#admin-update-result').textContent=JSON.stringify(j,null,2);alert('User updated')}
   catch(e){$('#admin-update-result').textContent=e.message}
 }
 
