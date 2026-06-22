@@ -20,12 +20,20 @@ pre{white-space:pre-wrap;word-break:break-word}
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundled.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const SUPABASE_URL='https://kjkwruzkfrxfwaokzqbs.supabase.co';
-const SUPABASE_ANON_KEY='sb_publishable_jA8qt1LWb95oQYnUh-59fA_klPe8kXE';
-const ADMIN_TOKEN=localStorage.getItem('admin_token')||'';
-let sb=null;
-try{if(window.supabase&&typeof window.supabase.createClient==='function'){sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY)}}catch(e){sb=null}
 const API_BASE='/api/v1';
+let sb=null;
+let SUPABASE_URL='';
+let SUPABASE_ANON_KEY='';
+async function initSupabase(){
+  try{
+    const j=await api('/api/v1/config/supabase');
+    SUPABASE_URL=j.url||'';
+    SUPABASE_ANON_KEY=j.anonKey||'';
+    if(window.supabase&&typeof window.supabase.createClient==='function'&&SUPABASE_URL&&SUPABASE_ANON_KEY){
+      sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+    }
+  }catch(e){sb=null}
+}
 
 const modules=[
 {id:'dashboard',name:'Dashboard'},{id:'tax',name:'Personal Tax'},{id:'gst',name:'GST Helper'},
@@ -534,7 +542,32 @@ async function loadChat(){
 }
 
 
-function renderStatements(root){renderModule(root,'Financial Statements',`<div class="glass p-4 rounded"><canvas id="stmtChart" height="120"></canvas></div>`)}
+function renderStatements(root){
+  renderModule(root,'Financial Statements',`<div class="glass p-4 rounded space-y-3">
+    <div class="text-sm font-semibold">Financial Statements</div>
+    <p class="text-xs text-white/60">Profit & loss, cash flow, and balance sheet will appear here after you connect your account.</p>
+    <canvas id="stmtChart" height="120"></canvas>
+  </div>`);
+  setTimeout(initStmtChart, 50);
+}
+function initStmtChart(){
+  const canvas=document.getElementById('stmtChart');
+  if(!canvas || canvas.dataset.initialized) return;
+  canvas.dataset.initialized='1';
+  try{
+    new Chart(canvas,{
+      type:'line',
+      data:{
+        labels:['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets:[
+          {label:'Profit',data:[12000,15000,14000,17000,19000,21000],borderColor:'#5e6ad2',backgroundColor:'rgba(94,106,210,0.1)',fill:true,tension:0.3},
+          {label:'Loss',data:[4000,3500,5000,3000,2500,2000],borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.1)',fill:true,tension:0.3}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#e5e7eb'}}},scales:{y:{ticks:{color:'#9ca3af'}},x:{ticks:{color:'#9ca3af'}}}}
+    });
+  }catch(e){}
+}
 
 function renderAdmin(root){root.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Admin</h2>
 <div class="flex gap-2 border-b border-white/10 pb-2">
@@ -590,25 +623,24 @@ function renderPlaceholder(root,title,desc){root.innerHTML=`<section class="p-4 
 function renderSettings(){const root=$('#page-content');root.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Settings</h2>
   <div class="glass p-4 rounded space-y-3">
     <div class="text-sm font-semibold">Document Upload</div>
-    <div class="text-xs text-white/60">Upload PAN, Aadhar, or financial documents. Supported: PDF, JPG, PNG, CSV</div>
+    <div class="text-xs text-white/60">Upload PAN, Aadhar, or financial documents. Supported formats: PDF, JPG, PNG, CSV</div>
     <input id="doc-file" type="file" class="w-full text-xs" accept=".pdf,.jpg,.jpeg,.png,.csv"/>
     <button onclick="uploadDoc()" class="btn-primary text-xs px-3 py-2 rounded">Upload</button>
-    <pre id="doc-result" class="text-xs bg-black/30 p-3 rounded h-32 overflow-auto"></pre>
+    <div id="doc-result" class="space-y-2 text-xs"></div>
   </div></section>`}
 
 async function uploadDoc(){
   const file=$('#doc-file').files[0];if(!file){alert('Select a file');return}
-  if(!sb){alert('Supabase not connected');return}
-  const out=$('#doc-result');
-  out.textContent='Uploading…';
+  if(!sb){showCard('doc-result','Upload issue',['Storage is not connected. Please refresh.']);return}
+  showCard('doc-result','Uploading…',['Sending '+file.name+'...']);
   try{
     const path=`documents/${state.user.id}/${Date.now()}_${file.name}`;
     const {error:uploadError}=await sb.storage.from('user-documents').upload(path,file,{contentType:file.type});
     if(uploadError) throw uploadError;
     const {error:dbError}=await sb.from('documents').insert({user_id:state.user.id,file_name:file.name,file_path:path,file_size:file.size,mime_type:file.type});
     if(dbError) throw dbError;
-    out.textContent='Uploaded successfully: '+file.name;
-  }catch(e){out.textContent='Error: '+e.message}
+    showCard('doc-result','Upload complete',['File: '+file.name,'Status: Saved to your account']);
+  }catch(e){showCard('doc-result','Upload failed',[e.message])}
 }
 function navigate(id){
   state.page=id;
@@ -651,7 +683,7 @@ function build(root){
   }
 }
 
-async function init(){const app=$('#app');state.user={id:'test-user-1',email:'test@taxos.ai',user_metadata:{}};build(app)}
+async function init(){await initSupabase();const app=$('#app');state.user={id:'test-user-1',email:'test@taxos.ai',user_metadata:{}};build(app)}
 
 function toggleChatMobile(){const f=$('#chat-float');if(f){f.classList.toggle('hidden');const b=$('#chat-toggle');if(b){b.classList.toggle('hidden',!f.classList.contains('hidden'))}}}
 

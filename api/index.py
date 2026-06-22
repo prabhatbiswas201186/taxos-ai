@@ -1060,6 +1060,13 @@ def admin_update_config(req: ConfigUpdateRequest, authorization: Optional[str] =
     require_admin(authorization)
     return {"success": True, "config": req.dict(exclude_none=True)}
 
+@app.get("/api/v1/config/supabase")
+def public_supabase_config():
+    return {
+        "url": os.environ.get("SUPABASE_URL", ""),
+        "anonKey": os.environ.get("SUPABASE_ANON_KEY", "")
+    }
+
 if __name__ == "__main__":
     import uvicorn
     API_HOST = os.environ.get("API_HOST", "0.0.0.0")
