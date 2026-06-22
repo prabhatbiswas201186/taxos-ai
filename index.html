@@ -461,7 +461,7 @@ function navigate(id){
 }
 
 function build(root){
-  root.innerHTML=nav()+header()+`<main class="min-h-screen"><section class="p-4 md:p-6" id="page-content"></section></main>`+floatingChat();
+  root.innerHTML=nav()+header()+`<main class="min-h-screen pt-14"><section class="p-4 md:p-6" id="page-content"></section></main>`+floatingChat();
   const navEl=$('#nav');
   if(navEl){
     navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`+`<button data-id="admin" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Admin</button>`
