@@ -8,7 +8,7 @@ import os, json, uuid, re
 from pathlib import Path
 from supabase import create_client, Client
 
-app = FastAPI(title="TAXOS AI Backend", version="1.0.0")
+app = FastAPI(title="TAXOS Backend", version="1.0.0")
 
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
 ALLOW_CREDENTIALS = os.environ.get("ALLOW_CREDENTIALS", "true").lower() == "true"
@@ -920,22 +920,22 @@ def dashboard(user_id: str):
 def list_modules():
     return {
         "modules": [
-            {"id": "tax", "name": "Personal Tax AI", "description": "Regime optimizer, deductions finder", "status": "active"},
-            {"id": "gst", "name": "GST AI", "description": "ITC reconciliation, filing prep", "status": "active"},
-            {"id": "compliance", "name": "Compliance AI", "description": "Auto tracking, alerts", "status": "active"},
-            {"id": "cfo", "name": "AI CFO", "description": "Cash flow forecasting", "status": "active"},
-            {"id": "audit", "name": "AI Auditor", "description": "Risk scoring, findings", "status": "active"},
+            {"id": "tax", "name": "Personal Tax", "description": "Regime optimizer, deductions finder", "status": "active"},
+            {"id": "gst", "name": "GST Helper", "description": "ITC reconciliation, filing prep", "status": "active"},
+            {"id": "compliance", "name": "Compliance Calendar", "description": "Auto tracking, alerts", "status": "active"},
+            {"id": "cfo", "name": "Money Dashboard", "description": "Cash flow forecasting", "status": "active"},
+            {"id": "audit", "name": "Health Check", "description": "Risk scoring, findings", "status": "active"},
             {"id": "business", "name": "Business Consultant", "description": "Strategy, growth", "status": "active"},
             {"id": "fraud", "name": "Fraud Detection", "description": "Vendor, invoice, expense", "status": "active"},
-            {"id": "legal", "name": "AI Legal Compliance", "description": "Contracts, licenses", "status": "active"},
-            {"id": "hr", "name": "AI HR Compliance", "description": "PF, ESI, labor law", "status": "active"},
-            {"id": "fundraising", "name": "AI Fundraising Advisor", "description": "Investor reports", "status": "active"},
-            {"id": "health", "name": "AI Business Health", "description": "6-score health engine", "status": "active"},
-            {"id": "collections", "name": "AI Collections Agent", "description": "Receivables, reminders", "status": "active"},
-            {"id": "procurement", "name": "AI Procurement", "description": "Vendor optimization", "status": "active"},
+            {"id": "legal", "name": "Legal Helper", "description": "Contracts, licenses", "status": "active"},
+            {"id": "hr", "name": "Payroll Helper", "description": "PF, ESI, labor law", "status": "active"},
+            {"id": "fundraising", "name": "Funding Helper", "description": "Investor reports", "status": "active"},
+            {"id": "health", "name": "Business Health", "description": "6-score health engine", "status": "active"},
+            {"id": "collections", "name": "Payment Reminders", "description": "Receivables, reminders", "status": "active"},
+            {"id": "procurement", "name": "Vendor Helper", "description": "Vendor optimization", "status": "active"},
             {"id": "benefits", "name": "Government Benefits", "description": "Subsidies, incentives", "status": "active"},
-            {"id": "global", "name": "AI Global Expansion", "description": "Jurisdiction advisor", "status": "active"},
-            {"id": "chat", "name": "AI Chat / CFO", "description": "Natural language queries", "status": "active"},
+            {"id": "global", "name": "Expand Business", "description": "Jurisdiction advisor", "status": "active"},
+            {"id": "chat", "name": "Ask a Question", "description": "Natural language queries", "status": "active"},
             {"id": "statements", "name": "Financial Statements", "description": "P&L, BS, CF auto-gen", "status": "active"},
         ]
     }
@@ -1029,21 +1029,21 @@ def admin_get_config(authorization: Optional[str] = Header(None, alias="Authoriz
             {"id": m["id"], "name": m["name"], "enabled": True, "requiresSubscription": "free" if m["id"] in ["dashboard","tax","compliance"] else "pro"}
             for m in [
                 {"id": "dashboard", "name": "Dashboard"},
-                {"id": "tax", "name": "Personal Tax AI"},
-                {"id": "gst", "name": "GST AI"},
-                {"id": "compliance", "name": "Compliance AI"},
-                {"id": "cfo", "name": "AI CFO"},
-                {"id": "audit", "name": "AI Auditor"},
+                {"id": "tax", "name": "Personal Tax"},
+                {"id": "gst", "name": "GST Helper"},
+                {"id": "compliance", "name": "Compliance Calendar"},
+                {"id": "cfo", "name": "Money Dashboard"},
+                {"id": "audit", "name": "Health Check"},
                 {"id": "business", "name": "Business Consultant"},
                 {"id": "fraud", "name": "Fraud Detection"},
-                {"id": "legal", "name": "AI Legal Compliance"},
-                {"id": "hr", "name": "AI HR Compliance"},
-                {"id": "fundraising", "name": "AI Fundraising Advisor"},
-                {"id": "health", "name": "AI Business Health"},
-                {"id": "collections", "name": "AI Collections Agent"},
-                {"id": "procurement", "name": "AI Procurement"},
+                {"id": "legal", "name": "Legal Helper"},
+                {"id": "hr", "name": "Payroll Helper"},
+                {"id": "fundraising", "name": "Funding Helper"},
+                {"id": "health", "name": "Business Health"},
+                {"id": "collections", "name": "Payment Reminders"},
+                {"id": "procurement", "name": "Vendor Helper"},
                 {"id": "benefits", "name": "Government Benefits"},
-                {"id": "global", "name": "AI Global Expansion"},
+                {"id": "global", "name": "Expand Business"},
                 {"id": "statements", "name": "Financial Statements"},
             ]
         ],
