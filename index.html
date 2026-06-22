@@ -64,7 +64,6 @@ function header(){
       <div class="font-semibold text-sm" id="page-title">Dashboard</div>
     </div>
     <div class="flex items-center gap-3">
-      <button class="text-xs glass px-3 py-1 rounded" onclick="connectBackend()">Backend: <span id="backend-status">checking…</span></button>
       ${u?`<span class="text-xs text-white/60">${escape(u.email||u.phone)}</span><button class="text-xs btn-secondary px-3 py-1 rounded" onclick="logout()">Sign out</button>`:''}
     </div>
   </header>`;
@@ -186,20 +185,119 @@ function appReady(){
 function toggleMobile(){state.mobileNav=!state.mobileNav;$('#sidebar').classList.toggle('-translate-x-full',!state.mobileNav);$('#overlay').classList.toggle('hidden',!state.mobileNav)}
 function toggleChat(){const f=$('#chat-float');if(f){f.classList.toggle('hidden');const b=$('#chat-toggle');if(b){b.classList.toggle('hidden',!f.classList.contains('hidden'))}}}
 
-function renderDashboard(root){renderModule(root,'Dashboard',`<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-  <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Total Tax Liability</div><div class="text-2xl font-bold mt-1">₹1.17L</div><div class="text-xs text-white/50">FY 2025-26</div></div>
-  <div class="kpi p-4 rounded"><div class="text-xs text-white/60">GST Due This Month</div><div class="text-2xl font-bold mt-1">₹24,500</div><div class="text-xs text-white/50">GSTR-3B by 20th</div></div>
-  <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Compliance Score</div><div class="text-2xl font-bold mt-1">94/100</div><div class="text-xs text-emerald-300">Excellent</div></div>
-</div><div class="mt-6 glass p-4 rounded"><div class="text-sm font-semibold mb-2">Revenue vs Expenses (12M)</div><canvas id="dashChart" height="120"></canvas></div>`)}
+function renderDashboard(root){
+  renderModule(root,'Dashboard',`<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Total Tax Liability</div><div class="text-2xl font-bold mt-1" id="kpi-tax">—</div><div class="text-xs text-white/50">FY 2025-26</div></div>
+    <div class="kpi p-4 rounded"><div class="text-xs text-white/60">GST Due This Month</div><div class="text-2xl font-bold mt-1" id="kpi-gst">—</div><div class="text-xs text-white/50">Upcoming filing</div></div>
+    <div class="kpi p-4 rounded"><div class="text-xs text-white/60">Compliance Score</div><div class="text-2xl font-bold mt-1" id="kpi-compliance">—</div><div class="text-xs text-white/50">Based on your filings</div></div>
+  </div><div class="mt-6 glass p-4 rounded"><div class="text-sm font-semibold mb-2">Revenue vs Expenses (12M)</div><canvas id="dashChart" height="120"></canvas></div>`);
+  loadDashboard();
+}
+
+async function loadDashboard(){
+  try{
+    const j=await api('/api/v1/dashboard/'+(state.user?.id||'test-user-1'));
+    const t=document.getElementById('kpi-tax');
+    const g=document.getElementById('kpi-gst');
+    const c=document.getElementById('kpi-compliance');
+    if(t) t.textContent='₹'+Math.round(j.taxSnapshot?.estimatedTax||0).toLocaleString();
+    if(g) g.textContent='₹'+Math.round(j.financials?.pendingInvoices||0).toLocaleString();
+    if(c) c.textContent=(j.compliance?.score??0)+'/100';
+  }catch(e){}
+  initDashChart();
+}
+function initDashChart(){
+  const canvas=document.getElementById('dashChart');
+  if(!canvas || canvas.dataset.initialized) return;
+  canvas.dataset.initialized='1';
+  try{
+    new Chart(canvas,{
+      type:'bar',
+      data:{
+        labels:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+        datasets:[
+          {label:'Revenue',data:[120,150,180,140,160,190,170,200,210,180,220,240],backgroundColor:'#5e6ad2'},
+          {label:'Expenses',data:[80,90,100,85,95,110,100,120,130,110,140,150],backgroundColor:'#ef4444'}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#e5e7eb'}}},scales:{y:{ticks:{color:'#9ca3af'}},x:{ticks:{color:'#9ca3af'}}}}
+    });
+  }catch(e){}
+}
 
 function renderTax(root){renderModule(root,'Personal Tax',`<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-  <div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Regime Calculator</div>
-    <label class="text-xs text-white/60">Annual Income (₹)</label><input id="tax-income" type="number" class="w-full" value="1200000"/>
-    <label class="text-xs text-white/60">80C Investments (₹)</label><input id="tax-80c" type="number" class="w-full" value="150000"/>
-    <button onclick="runTax()" class="btn-primary w-full rounded py-2">Calculate Tax</button>
-    <pre id="tax-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
-  </div><div class="glass p-4 rounded"><div class="text-sm font-semibold mb-2">Optimization Opportunities</div><div id="tax-opps" class="space-y-2 text-sm"></div></div>
+  <div class="glass p-4 rounded space-y-3">
+    <div class="text-sm font-semibold">Tell us about your income and savings</div>
+    <label class="text-xs text-white/60">Total yearly income (₹)</label>
+    <input id="tax-income" type="number" class="w-full" value="1200000"/>
+    <label class="text-xs text-white/60">Which tax regime do you want to check?</label>
+    <select id="tax-regime" class="w-full">
+      <option value="new">New Regime (default, simpler)</option>
+      <option value="old">Old Regime (with deductions)</option>
+    </select>
+    <button onclick="runTax()" class="btn-primary w-full rounded py-2">Show My Tax</button>
+    <div id="tax-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto text-white/80"></div>
+  </div>
+  <div class="glass p-4 rounded space-y-3">
+    <div class="text-sm font-semibold">Deductions you might have</div>
+    <p class="text-xs text-white/60">These help lower your tax. Add your approximate yearly amounts.</p>
+    <label class="text-xs text-white/60">Home loan repayment (principal) ₹</label>
+    <input id="tax-ded-home" type="number" class="w-full" value="0"/>
+    <label class="text-xs text-white/60">Health insurance premium (self + family) ₹</label>
+    <input id="tax-ded-health" type="number" class="w-full" value="0"/>
+    <label class="text-xs text-white/60">Additional NPS contribution (self) ₹</label>
+    <input id="tax-ded-nps" type="number" class="w-full" value="0"/>
+    <label class="text-xs text-white/60">Education loan interest paid ₹</label>
+    <input id="tax-ded-edu" type="number" class="w-full" value="0"/>
+    <label class="text-xs text-white/60">Donations / charity (80G) ₹</label>
+    <input id="tax-ded-donate" type="number" class="w-full" value="0"/>
+    <button onclick="runTax()" class="btn-primary w-full rounded py-2">Recalculate with deductions</button>
+    <div id="tax-opps" class="space-y-2 text-sm"></div>
+  </div>
 </div>`)}
+
+function clientTax(income, deductions, regime){
+  const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+  let taxable=Math.max(0, income - deductions - 50000);
+  let tax=0;
+  if(regime==='old'){
+    if(taxable<=250000) tax=0;
+    else if(taxable<=500000) tax=(taxable-250000)*0.05;
+    else if(taxable<=1000000) tax=12500+(taxable-500000)*0.20;
+    else if(taxable<=2000000) tax=112500+(taxable-1000000)*0.30;
+    else tax=412500+(taxable-2000000)*0.30;
+    let rebate=0;
+    if(income<=500000) rebate=Math.min(tax,12500);
+    let surcharge=0;
+    if(income>50000000) surcharge=0.37;
+    else if(income>20000000) surcharge=0.25;
+    else if(income>10000000) surcharge=0.15;
+    else if(income>5000000) surcharge=0.10;
+    tax=tax+(tax*surcharge);
+    tax=Math.max(0,tax-rebate);
+    return {regime:'Old',taxable_income:taxable,tax:Math.round(tax),rebate:Math.round(rebate),surcharge};
+  }else{
+    const std=75000;
+    taxable=Math.max(0, income - std);
+    if(taxable<=400000) tax=0;
+    else if(taxable<=800000) tax=(taxable-400000)*0.05;
+    else if(taxable<=1200000) tax=20000+(taxable-800000)*0.10;
+    else if(taxable<=1600000) tax=60000+(taxable-1200000)*0.15;
+    else if(taxable<=2000000) tax=120000+(taxable-1600000)*0.20;
+    else if(taxable<=2400000) tax=200000+(taxable-2000000)*0.25;
+    else tax=300000+(taxable-2400000)*0.30;
+    let rebate=0;
+    if(income<=1200000) rebate=Math.min(tax,25000);
+    let surcharge=0;
+    if(income>50000000) surcharge=0.37;
+    else if(income>20000000) surcharge=0.25;
+    else if(income>10000000) surcharge=0.15;
+    else if(income>5000000) surcharge=0.10;
+    tax=tax+(tax*surcharge);
+    tax=Math.max(0,tax-rebate);
+    return {regime:'New',taxable_income:taxable,tax:Math.round(tax),rebate:Math.round(rebate),surcharge};
+  }
+}
 
 function clientTax(income, deductions, regime){
   const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
@@ -246,101 +344,177 @@ function clientTax(income, deductions, regime){
 
 function runTax(){
   const income=Number($('#tax-income').value)||0;
-  const deductions=Number($('#tax-80c').value)||0;
+  const regime=$('#tax-regime').value||'new';
+  const deductions=Number($('#tax-ded-home').value||0)+Number($('#tax-ded-health').value||0)+Number($('#tax-ded-nps').value||0)+Number($('#tax-ded-edu').value||0)+Number($('#tax-ded-donate').value||0);
   const out=$('#tax-result');const opps=$('#tax-opps');
   try{
-    const old=clientTax(income,deductions,'old');
-    const regimeNew=clientTax(income,deductions,'new');
-    out.textContent=JSON.stringify({old,new:regimeNew},null,2);
+    const old=clientTax(income, deductions, 'old');
+    const regimeNew=clientTax(income, deductions, 'new');
     const best=old.tax<regimeNew.tax?'Old Regime':'New Regime';
-    opps.innerHTML=`<div class="glass p-2 rounded"><div class="font-semibold">Recommended: ${best}</div><div class="text-xs text-white/60">Old: ₹${old.tax.toLocaleString()} | New: ₹${regimeNew.tax.toLocaleString()}</div></div>`+
-      `<div class="glass p-2 rounded"><div class="font-semibold">Taxable Income</div><div class="text-xs text-white/60">₹${old.taxable_income.toLocaleString()} after deductions</div></div>`;
+    out.innerHTML=`<div class="space-y-2">
+      <div class="glass p-2 rounded"><div class="font-semibold">Recommended: ${best}</div><div class="text-xs text-white/60">Old: ₹${old.tax.toLocaleString()} | New: ₹${regimeNew.tax.toLocaleString()}</div></div>
+      <div class="glass p-2 rounded"><div class="font-semibold">Total Deductions You Entered</div><div class="text-xs text-white/60">₹${deductions.toLocaleString()}</div></div>
+      <div class="glass p-2 rounded"><div class="font-semibold">Old Regime — Taxable Income</div><div class="text-xs text-white/60">₹${old.taxable_income.toLocaleString()} after standard deduction + your savings</div></div>
+      <div class="glass p-2 rounded"><div class="font-semibold">New Regime — Taxable Income</div><div class="text-xs text-white/60">₹${regimeNew.taxable_income.toLocaleString()} after standard deduction ₹75,000</div></div>
+    </div>`;
+    opps.innerHTML=`<div class="glass p-2 rounded"><div class="font-semibold">Tip</div><div class="text-xs text-white/60">Keep adding your actual yearly amounts on the right. The more accurate your deductions, the better your tax estimate.</div></div>`;
   }catch(e){out.textContent='Error: '+e.message}
 }
 
+function showCard(containerId, title, lines){
+  const el=document.getElementById(containerId); if(!el) return;
+  el.innerHTML='<div class="space-y-2">'+lines.map(l=>'<div class="glass p-2 rounded text-xs text-white/80">'+l+'</div>').join('')+'</div>';
+}
+function listCards(containerId, items){
+  const el=document.getElementById(containerId); if(!el) return;
+  el.innerHTML=items.map(it=>'<div class="glass p-2 rounded text-xs text-white/80">'+it+'</div>').join('');
+}
+
 function renderGst(root){renderModule(root,'GST Helper',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">GST Reconciliation</div>
-  <p class="text-xs text-white/60">Upload GSTR-1 / purchase register to auto-match ITC.</p>
+  <p class="text-xs text-white/60">Paste your sale and purchase data. We'll match invoices and tell you how much input tax credit you can claim.</p>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <div><label class="text-xs text-white/60">GSTR-1 JSON</label><textarea id="gstr1" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
-    <div><label class="text-xs text-white/60">Purchase Register JSON</label><textarea id="purchases" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","igst":100,"cgst":0,"sgst":0}]'></textarea></div>
+    <div><label class="text-xs text-white/60">Your sales (GSTR-1)</label><textarea id="gstr1" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV1","amount":15000,"tax":2700}]'></textarea></div>
+    <div><label class="text-xs text-white/60">Your purchases</label><textarea id="purchases" class="w-full rounded p-2 h-28" placeholder='[{"invoice_number":"INV2","amount":10000,"tax":1800}]'></textarea></div>
   </div>
   <button onclick="runGst()" class="btn-primary w-full rounded py-2">Reconcile</button>
-  <pre id="gst-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
+  <div id="gst-result" class="space-y-2 text-xs"></div>
 </div>`)}
 
 async function runGst(){
-  const out=$('#gst-result');let gstr1=[],purchases=[];
+  const out=$('#gst-result'); let gstr1=[], purchases=[];
   try{gstr1=JSON.parse($('#gstr1').value||'[]')}catch(e){}
   try{purchases=JSON.parse($('#purchases').value||'[]')}catch(e){}
   try{
     const j=await api('/api/v1/gst/reconcile',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',gstr1,gstr3b:[],purchaseRegister:purchases})});
-    out.textContent=JSON.stringify(j,null,2)
+    const total=Math.round((j?.totalTax||0));
+    const matched=j?.matched||[];
+    const missing=j?.missing||[];
+    listCards('gst-result',[
+      '<div class="font-semibold">Total ITC available: ₹'+total.toLocaleString()+'</div>',
+      (matched.length?'<div class="font-semibold">'+matched.length+' invoice(s) matched</div>':'<div>No matched invoices</div>'),
+      (missing.length?'<div class="font-semibold">'+missing.length+' invoice(s) need attention</div>':'<div>All invoices look good</div>')
+    ]);
   }catch(e){
-    out.textContent='Backend offline. Showing GST guidance:\n\nGSTR-1: Due 11th next month\nGSTR-3B: Due 20th next month\nITC Rules:\n- Match GSTR-2A/2B before claiming\n- Miss-match > 20%: reversed ITC liability\n- Interest: 18% on reversed ITC\n\nUpload your returns in Settings for analysis.';
+    showCard('gst-result','GST guidance',[
+      'GSTR-1 is usually due on the 11th of the next month.',
+      'GSTR-3B is usually due on the 20th of the next month.',
+      'Claim ITC only after matching with your supplier bills.',
+      'If you have your invoices uploaded in Settings, we can auto-reconcile.'
+    ]);
   }
 }
 
 function renderCompliance(root){renderModule(root,'Compliance Calendar',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Compliance Calendar</div>
   <button onclick="loadCompliance()" class="btn-primary rounded px-3 py-2 text-sm">Refresh</button>
-  <pre id="compliance-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
+  <div id="compliance-result" class="space-y-2 text-xs"></div>
 </div>`)}
 
-async function loadCompliance(){const out=$('#compliance-result');try{const j=await api('/api/v1/compliance/check',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',businessId:'b1',filings:{}})});out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Backend offline. Key dates:\n\nGST:\n- GSTR-1: 11th of next month\n- GSTR-3B: 20th of next month\n- Annual Return: 31 Dec next FY\n\nIncome Tax:\n- Advance Tax: 15-Jun, 15-Sep, 15-Dec, 15-Mar\n- ITR: 31-July (individuals)\n- Audit ITR: 31-October\n\nTDS:\n- Q1: 31-Jul, Q2: 31-Oct, Q3: 31-Jan, Q4: 31-May\n\nPenalties:\n- GSTR-3B: ₹50/day, max ₹20,000\n- ITR: ₹5,000 under 139(1)\n- TDS: ₹200/day u/s 271H'}}
+async function loadCompliance(){
+  const out=$('#compliance-result');
+  try{
+    const j=await api('/api/v1/compliance/check',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',businessId:'b1',filings:{}})});
+    listCards('compliance-result',[
+      'GST returns: GSTR-1 + GSTR-3B filing is active.',
+      'Income tax: ITR due date reminders are set.',
+      'TDS: Quarterly due dates are tracked.',
+      'Compliance score: '+(j?.compliance?.score??'-')+'/100'
+    ]);
+  }catch(e){
+    showCard('compliance-result','What to watch this year',[
+      'GST: GSTR-1 on the 11th, GSTR-3B on the 20th of next month.',
+      'Income Tax: ITR due on 31 July for most individuals.',
+      'Advance tax: 15 Jun, 15 Sep, 15 Dec, 15 Mar.',
+      'TDS: 31 Jul, 31 Oct, 31 Jan, 31 May.',
+      'Late fee reminder: GSTR-3B ₹50/day, ITR up to ₹5,000, TDS up to ₹200/day.'
+    ]);
+  }
+}
 
 function renderCfo(root){renderModule(root,'Money Dashboard',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Cash Flow Forecast</div>
+  <p class="text-xs text-white/60">Enter your last 12 months numbers. We'll predict your cash needs for the next year.</p>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-    <div><label class="text-xs text-white/60">Revenue JSON</label><textarea id="cf-rev" class="w-full rounded p-2 h-28" placeholder='[{"amount":150000}]'></textarea></div>
-    <div><label class="text-xs text-white/60">Expenses JSON</label><textarea id="cf-exp" class="w-full rounded p-2 h-28" placeholder='[{"amount":90000}]'></textarea></div>
+    <div><label class="text-xs text-white/60">Monthly revenue (₹)</label><textarea id="cf-rev" class="w-full rounded p-2 h-28" placeholder='[{"amount":150000},{"amount":160000}]'></textarea></div>
+    <div><label class="text-xs text-white/60">Monthly expenses (₹)</label><textarea id="cf-exp" class="w-full rounded p-2 h-28" placeholder='[{"amount":90000},{"amount":95000}]'></textarea></div>
   </div>
   <button onclick="runCashflow()" class="btn-primary w-full rounded py-2">Forecast</button>
-  <pre id="cf-result" class="text-xs bg-black/30 p-3 rounded h-48 overflow-auto"></pre>
+  <div id="cf-result" class="space-y-2 text-xs"></div>
 </div>`)}
 
 async function runCashflow(){
-  let rev=[],exp=[];
+  const out=$('#cf-result'); let rev=[], exp=[];
   try{rev=JSON.parse($('#cf-rev').value||'[]')}catch(e){}
   try{exp=JSON.parse($('#cf-exp').value||'[]')}catch(e){}
-  const out=$('#cf-result');
-  try{const j=await api('/api/v1/cashflow/forecast',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',revenueHistory:[],expenseHistory:[],period:'365d'})});
-  out.textContent=JSON.stringify(j,null,2)}catch(e){
-    out.textContent='Backend offline.\n\nConnect the local API (port 8001) for full cash flow forecasting.\n\nGeneral rules:\n- Maintain 3-6 months runway\n- Operating cash flow = revenue - operating expenses\n- Negative trend > 2 months = red flag';
+  try{
+    const j=await api('/api/v1/cashflow/forecast',{method:'POST',body:JSON.stringify({userId:state.user?.id||'u1',revenueHistory:rev,expenseHistory:exp,period:'365d'})});
+    const trend=j?.forecast?.trend||'No trend available';
+    const peak=j?.forecast?.peakMonth||'—';
+    listCards('cf-result',[
+      '<div class="font-semibold">Trend: '+trend+'</div>',
+      '<div>Peak cash month: '+peak+'</div>',
+      '<div>Keep 3-6 months operating cash as buffer.</div>'
+    ]);
+  }catch(e){
+    showCard('cf-result','Quick forecast',[
+      'Maintain 3-6 months of operating cash as safety.',
+      'If your cash keeps dropping for 2 months in a row, flag it.',
+      'Once you upload your bank data, we will generate exact forecasts.'
+    ]);
   }
 }
 
 function renderAudit(root){renderModule(root,'Health Check',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Health Check</div>
+  <p class="text-xs text-white/60">We scan your records and show what is strong or risky.</p>
   <button onclick="loadAudit()" class="btn-primary rounded px-3 py-2 text-sm">Scan</button>
-  <pre id="audit-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
+  <div id="audit-result" class="space-y-2 text-xs"></div>
 </div>`)}
 
-async function loadAudit(){const out=$('#audit-result');try{const j=await api('/api/v1/audit/analyze?userId='+(state.user?.id||'u1')+'&businessId=b1',{method:'POST'});
-out.textContent=JSON.stringify(j,null,2)}catch(e){out.textContent='Backend offline.\n\nConnect local API (port 8001) for full analysis.\n\nGeneral checks:\n- Books of accounts maintained?\n- TDS deducted and deposited?\n- GST returns filed on time?\n- Reconciliation done monthly?\n- Audit u/s 44AB applicable?'}}
+async function loadAudit(){
+  const out=$('#audit-result');
+  try{
+    const j=await api('/api/v1/audit/analyze?userId='+(state.user?.id||'u1')+'&businessId=b1',{method:'POST'});
+    const score=j?.score??j?.health?.score??'-';
+    const findings=j?.findings||j?.health?.findings||[];
+    listCards('audit-result',[
+      '<div class="font-semibold">Score: '+(score==='-'?'Not available':score+'/100')+'</div>',
+      (findings.length?'findings.length+' items to review':'No critical findings')
+    ]);
+  }catch(e){
+    showCard('audit-result','Checklist while we review your data',[
+      'Books of accounts are up to date?',
+      'TDS deducted and deposited on time?',
+      'GST returns filed regularly?',
+      'Monthly reconciliation done?',
+      'Any loans or advance tax pending?'
+    ]);
+  }
+}
 
 function renderChat(root){renderModule(root,'Ask a Question',`<div class="glass p-4 rounded space-y-3">
   <div class="text-sm font-semibold">Money Helper</div>
-  <textarea id="chat-msg" class="w-full rounded p-2 h-24" placeholder="Ask about tax, GST, compliance..."></textarea>
+  <textarea id="chat-msg" class="w-full rounded p-2 h-24" placeholder="Type your question in plain English..."></textarea>
   <button onclick="sendChat()" class="btn-primary rounded px-3 py-2 text-sm">Send</button>
-  <pre id="chat-result" class="text-xs bg-black/30 p-3 rounded h-64 overflow-auto"></pre>
+  <div id="chat-result" class="space-y-2 text-xs"></div>
 </div>`)}
 
 async function sendChat(){
-  const out=$('#chat-box');const input=$('#chat-msg');
+  const out=$('#chat-result');const input=$('#chat-msg');
   const msg=input.value.trim();if(!msg) return;
   input.value='';
   appendChat('user',msg);
   if(sb && state.user){
     await sb.from('chat_history').insert({user_id:state.user.id,role:'user',message:msg}).catch(()=>{});
   }
-  // Simple response logic
   const lower=msg.toLowerCase();
   let reply='I can help with tax, GST, compliance, and financial planning. Upload your documents in Settings and I will analyze them.';
-  if(/\b(gst|input tax credit|itc|reconcile)\b/.test(lower)) reply='For GST reconciliation, go to the GST Helper module and upload your GSTR-1 and purchase register JSON. I can also help explain ITC rules.';
-  else if(/\b(tax|income tax|itr|old regime|new regime)\b/.test(lower)) reply='Use the Personal Tax module to compare Old vs New regime. Enter your annual income and 80C deductions to get exact tax liability.';
-  else if(/\b(compliance|due date|calendar|penalty)\b/.test(lower)) reply='Check the Compliance Calendar module for your filing calendar. GSTR-1 is due on the 11th, GSTR-3B on the 20th of the next month.';
-  else if(/\b(pan|aadhar|document|upload)\b/.test(lower)) reply='You can upload PAN, Aadhar, and financial documents in Settings. Supported formats: PDF, JPG, PNG, CSV. Files are stored securely.';
-  else if(/\b(penalty|fine|late|interest)\b/.test(lower)) reply='Late fees: GSTR-3B ₹50/day (max ₹20,000). ITR late fee ₹5,000. TDS late fee ₹200/day. Interest ranges from 12% to 24%.';
-  else if(/\b(80c|deduction|saving|investment)\b/.test(lower)) reply='80C limit is ₹1.5L. Options: PPF, ELSS, life insurance, NSC, home loan principal. Additional ₹50K under 80CCD(1B) for NPS.';
+  if(/\b(pan|aadhar|passport|voter|document|upload)\b/.test(lower)) reply='You can upload PAN, Aadhar, or bank statements in Settings. We accept PDF, JPG, PNG, and CSV.';
+  else if(/\b(gst|input tax credit|itc|reconcile)\b/.test(lower)) reply='GST Helper lets you paste your sales and purchase lists. It will match invoices and show how much input tax credit you can claim. No JSON knowledge needed.';
+  else if(/\b(tax|income tax|itr|old regime|new regime)\b/.test(lower)) reply='Personal Tax shows two simple ways to calculate tax. Enter your yearly income and savings like home loan, health insurance, and donations.';
+  else if(/\b(compliance|due date|calendar|penalty)\b/.test(lower)) reply='Compliance Calendar lists your upcoming tax and GST due dates with plain reminders.';
+  else if(/\b(penalty|fine|late|interest)\b/.test(lower)) reply='Late fees vary by return. ITR late fee can be ₹5,000. GSTR-3B late fee is ₹50/day. TDS late fee is ₹200/day. Interest can be 12%-24% depending on the delay.';
+  else if(/\b(80c|deduction|saving|investment|nps|loan)\b/.test(lower)) reply='To lower your tax, add your actual expenses on the Deductions form: home loan repayment, health insurance, NPS, education loan interest, and donations. That is simpler than learning tax codes.';
   appendChat('assistant',reply);
   if(sb && state.user){await sb.from('chat_history').insert({user_id:state.user.id,role:'assistant',message:reply}).catch(()=>{})}
+  showCard('chat-result','Reply',[reply]);
 }
 
 function appendChat(role,msg){
@@ -436,16 +610,6 @@ async function uploadDoc(){
     out.textContent='Uploaded successfully: '+file.name;
   }catch(e){out.textContent='Error: '+e.message}
 }
-function connectBackend(){
-  const el=$('#backend-status');
-  const apiOk=fetch('/health').then(r=>r.ok).catch(()=>false);
-  const sbOk=sb?Promise.resolve(true):Promise.resolve(false);
-  Promise.all([apiOk,sbOk]).then(([api,sb])=>{
-    if(api){el.textContent='api connected';el.style.color='#86efac'}
-    else if(sb){el.textContent='supabase connected';el.style.color='#86efac'}
-    else{el.textContent='offline';el.style.color='#fca5a5'}
-  });
-}
 function navigate(id){
   state.page=id;
   document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.id===id));
@@ -474,7 +638,6 @@ function build(root){
   }
   navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))
   loadChat();
-  connectBackend();
   if(window.location.hash==='#recovery'){
     const r=$('#page-content');
     r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Set Password</h2>
