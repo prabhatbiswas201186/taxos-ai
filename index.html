@@ -727,7 +727,8 @@ function build(root){
   }
   navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))
   loadChat();
-  if(window.location.hash==='#recovery'){
+  const hash=(window.location.hash||'').replace('#','');
+  if(hash==='recovery'){
     const r=$('#page-content');
     r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Set Password</h2>
       <div class="glass p-4 rounded space-y-3">
@@ -735,6 +736,8 @@ function build(root){
         <button onclick="setPassword()" class="btn-primary w-full rounded py-2 text-sm">Update Password</button>
         <div id="auth-error" class="text-xs text-red-400 hidden"></div>
       </div></section>`;
+  }else if(hash && modules.find(m=>m.id===hash)){
+    navigate(hash);
   }else{
     navigate('dashboard');
   }
