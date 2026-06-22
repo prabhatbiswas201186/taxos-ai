@@ -647,11 +647,8 @@ function navigate(id){
   document.querySelectorAll('.sidebar-item').forEach(el=>el.classList.toggle('active',el.dataset.id===id));
   $('#page-title').textContent=modules.find(m=>m.id===id).name;
   const r=$('#page-content');
-  ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements,admin:renderAdmin})[id]?.(r);
+  ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements})[id]?.(r);
   if(id==='settings') renderSettings();
-  if(id==='admin' && !localStorage.getItem('admin_token')){
-    const r=$('#page-content');r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Admin Login</h2><div class="glass p-4 rounded space-y-2"><input id="admin-token" class="w-full" placeholder="Admin token"/><button onclick="adminLogin()" class="btn-primary w-full rounded py-2 text-sm">Login</button></div></section>`;
-  }
 }
 
 function build(root){
