@@ -675,25 +675,49 @@ async function uploadDoc(){
   try{
     const fd=new FormData();fd.append('user_id',state.user?.id||'test-user-1');fd.append('file',file);fd.append('category',category);
     const j=await api('/documents/upload',{method:'POST',body:fd,headers:{Accept:'application/json'}});
-    const lines=['File: '+j.file_name,'Type: '+j.mime_type,'Size: '+(j.file_size?Math.round(j.file_size/1024)+' KB':'—'),'Saved: '+(j.persisted?'Yes (Supabase Storage)':'Locally'),''];
+    const lines=['File: '+j.file_name,'Type: '+j.mime_type,'Size: '+(j.file_size?Math.round(j.file_size/1024)+' KB':'—'),'Saved: '+(j.persisted?'Yes (Supabase Storage)':'Locally (pending sync)'),''];
     if(j.extracted_text){lines.push('Extracted text: '+(j.extracted_text.length>180?j.extracted_text.substring(0,180)+'...':j.extracted_text))}
     showCard('doc-result','Upload complete',lines);
+    // Persist metadata locally so it survives reloads / serverless restarts
+    try{
+      const key='taxos_docs_'+(state.user?.id||'test-user-1');
+      const list=JSON.parse(localStorage.getItem(key)||'[]');
+      list.unshift({
+        id: j.id||('local_'+Date.now()),
+        file_name: j.file_name,
+        mime_type: j.mime_type,
+        file_size: j.file_size,
+        category: j.category,
+        created_at: j.created_at||new Date().toISOString(),
+        extracted_text_snippet: (j.extracted_text||'').substring(0,500),
+        persisted: j.persisted,
+        file_path: j.file_path||''
+      });
+      localStorage.setItem(key, JSON.stringify(list));
+    }catch(e){console.warn('localStorage save failed',e)}
     loadDocs();
   }catch(e){showCard('doc-result','Upload failed',[e.message])}
 }
 async function loadDocs(){
   const el=$('#doc-list');if(!el) return;
+  let docs=[];
   try{
     const userId=state.user?.id||'test-user-1';
-    const j=await api('/documents/'+userId);
-    if(!j.length){el.innerHTML='<div class=\'text-white/50\'>No documents uploaded yet.</div>';return}
-    el.innerHTML=j.map(d=>`<div class='p-2 rounded bg-black/20 text-white/80 space-y-1'>
-      <div class='font-semibold text-white/90'>${escapeHtml(d.file_name)}</div>
-      <div class='text-white/60'>${d.category} · ${d.mime_type} · ${d.file_size?Math.round(d.file_size/1024)+' KB':'—'}</div>
-      ${d.extracted_text_snippet?`<div class='p-2 rounded bg-black/30 text-white/80'>${escapeHtml(d.extracted_text_snippet)}</div>`:''}
-      <div class='text-white/50'>${d.created_at||''}</div>
-    </div>`).join('');
-  }catch(e){el.innerHTML='<div class=\'text-white/50\'>Could not load documents.</div>'}
+    const apiDocs = await api('/documents/'+userId).catch(()=>[]);
+    const key='taxos_docs_'+userId;
+    const localDocs = JSON.parse(localStorage.getItem(key)||'[]');
+    // Merge local + API, dedupe by id
+    const map=new Map(apiDocs.map(d=>[d.id,d]));
+    localDocs.forEach(d=>{if(!map.has(d.id)) map.set(d.id,d)});
+    docs=Array.from(map.values()).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  }catch(e){docs=[]}
+  if(!docs.length){el.innerHTML='<div class=\'text-white/50\'>No documents uploaded yet.</div>';return}
+  el.innerHTML=docs.map(d=>`<div class='p-2 rounded bg-black/20 text-white/80 space-y-1'>
+    <div class='font-semibold text-white/90'>${escapeHtml(d.file_name)}</div>
+    <div class='text-white/60'>${d.category} · ${d.mime_type} · ${d.file_size?Math.round(d.file_size/1024)+' KB':'—'}</div>
+    ${d.extracted_text_snippet?`<div class='p-2 rounded bg-black/30 text-white/80'>${escapeHtml(d.extracted_text_snippet)}</div>`:''}
+    <div class='text-white/50'>${d.created_at||''}</div>
+  </div>`).join('');
 }
 function escapeHtml(text){return String(text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function navigate(id){
