@@ -42,7 +42,7 @@ const modules=[
 {id:'legal',name:'Legal Helper'},{id:'hr',name:'Payroll Helper'},{id:'fundraising',name:'Funding Helper'},
 {id:'health',name:'Business Health'},{id:'collections',name:'Payment Reminders'},{id:'procurement',name:'Vendor Helper'},
 {id:'benefits',name:'Government Benefits'},{id:'global',name:'Expand Business'},
-{id:'statements',name:'Financial Statements'},{id:'documents',name:'Documents'}
+{id:'statements',name:'Financial Statements'},{id:'documents',name:'Documents'},{id:'settings',name:'Settings'}
 ];
 let state={page:'dashboard',user:null,mobileNav:false};
 
@@ -730,8 +730,7 @@ function navigate(id){
   const r=$('#page-content');
   if(mod){
     $('#page-title').textContent=mod.name;
-    ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements,documents:renderDocuments})[id]?.(r);
-    if(id==='settings') renderSettings();
+    ({dashboard:renderDashboard,tax:renderTax,gst:renderGst,compliance:renderCompliance,cfo:renderCfo,audit:renderAudit,business:renderPlaceholder,fraud:renderPlaceholder,legal:renderPlaceholder,hr:renderPlaceholder,fundraising:renderPlaceholder,health:renderPlaceholder,collections:renderPlaceholder,procurement:renderPlaceholder,benefits:renderPlaceholder,global:renderPlaceholder,statements:renderStatements,documents:renderDocuments,settings:renderSettings})[id]?.(r);
   }else{
     $('#page-title').textContent=id||'Page';
     r.innerHTML=`<section class="p-4 md:p-6 space-y-4"><div class="glass p-4 rounded text-xs text-white/60">Page not found.</div></section>`;
@@ -750,7 +749,7 @@ function build(root){
   ` + floatingChat();
   const navEl=$('#nav');
   if(navEl){
-    navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('')+`<button data-id="settings" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">Settings</button>`
+    navEl.innerHTML=modules.map(m=>`<button data-id="${m.id}" class="sidebar-item w-full text-left px-3 py-2 rounded font-medium">${m.name}</button>`).join('');
   }
   navEl.querySelectorAll('button').forEach(b=>b.onclick=()=>navigate(b.dataset.id))
   loadChat();
@@ -768,6 +767,7 @@ function build(root){
   }else{
     navigate('dashboard');
   }
+  window.addEventListener('hashchange',()=>{const h=(window.location.hash||'').replace('#','');if(h && modules.find(m=>m.id===h)) navigate(h)});
 }
 
 async function init(){await initSupabase();const app=$('#app');state.user={id:'test-user-1',email:'test@taxos.ai',user_metadata:{}};build(app)}
