@@ -187,12 +187,16 @@ APP_CONFIG = {
 # === SUPABASE CLIENT (optional) ===
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_ANON_KEY = os.environ.get("SUPABASE_ANON_KEY", "")
+SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 supabase_client: Optional[Client] = None
-try:
-    if SUPABASE_URL and SUPABASE_ANON_KEY:
-        supabase_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-except Exception:
-    supabase_client = None
+if SUPABASE_URL:
+    try:
+        if SUPABASE_SERVICE_ROLE_KEY:
+            supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        elif SUPABASE_ANON_KEY:
+            supabase_client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+    except Exception:
+        supabase_client = None
 
 class IndianTaxEngine:
     @staticmethod
@@ -981,12 +985,41 @@ async def upload_document(user_id: str = Form(...), file: UploadFile = File(...)
     }
 
     documents.setdefault(user_id, []).append(doc)
+
+    if supabase_client:
+        try:
+            payload = {
+                "id": doc["id"],
+                "user_id": user_id,
+                "file_name": doc["file_name"],
+                "file_path": doc["file_path"],
+                "file_size": doc.get("file_size"),
+                "mime_type": doc.get("mime_type"),
+                "category": category,
+                "extracted_text": extracted_text,
+                "created_at": doc["created_at"],
+                "persisted": persisted,
+            }
+            supabase_client.table("documents").upsert(payload, on_conflict="id").execute()
+        except Exception:
+            pass
+
     return doc
 
 
 @app.get("/api/v1/documents/{user_id}")
 def list_documents(user_id: str):
     docs = documents.get(user_id, [])
+    if supabase_client:
+        try:
+            res = supabase_client.table("documents").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+            remote = res.data or []
+            by_id = {d["id"]: d for d in docs}
+            for d in remote:
+                by_id[d.get("id")] = d
+            docs = list(by_id.values())
+        except Exception:
+            pass
     return [
         {
             "id": d.get("id"),
@@ -1012,9 +1045,11 @@ def delete_document(doc_id: str, user_id: str = Query(...)):
 
     documents[user_id] = [d for d in user_docs if d["id"] != doc_id]
 
-    if supabase_client and doc.get("persisted"):
+    if supabase_client:
         try:
-            supabase_client.storage.from_("user-documents").remove([doc.get("file_path")])
+            supabase_client.table("documents").delete().eq("id", doc_id).execute()
+            if doc.get("persisted"):
+                supabase_client.storage.from_("user-documents").remove([doc.get("file_path")])
         except Exception:
             pass
 
