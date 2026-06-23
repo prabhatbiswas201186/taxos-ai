@@ -633,7 +633,7 @@ async function adminUpdateUser(){
   catch(e){$('#admin-update-result').textContent=e.message}
 }
 
-function renderPlaceholder(root,title,desc){root.innerHTML=`<section class="p-4 md:p-6">${placeholder(title,desc)}</section>`}
+function renderPlaceholder(root,_title,desc){const t=_title||'Coming Soon';root.innerHTML=`<section class="p-4 md:p-6">${placeholder(t,desc||'This module is under development. Coming shortly.')}</section>`}
 
 function renderSettings(){const root=$('#page-content');root.innerHTML=`<section class="p-4 md:p-6 space-y-4"><h2 class="text-base font-semibold">Settings</h2>
   <div class="glass p-4 rounded space-y-3">
