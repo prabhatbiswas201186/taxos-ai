@@ -427,10 +427,13 @@ async function runGst(){
   }
 }
 
-function renderCompliance(root){renderModule(root,'Compliance Calendar',`<div class="glass p-4 rounded space-y-3"><div class="text-sm font-semibold">Compliance Calendar</div>
-  <button onclick="loadCompliance()" class="btn-primary rounded px-3 py-2 text-sm">Refresh</button>
+function renderCompliance(root){renderModule(root,'Compliance Calendar',`<div class="glass p-4 rounded space-y-3">
+  <div class="flex items-center justify-between">
+    <div class="text-sm font-semibold">Scheduled Checks</div>
+    <button onclick=\"loadCompliance()\" class="btn-primary rounded px-3 py-2 text-sm">Refresh</button>
+  </div>
   <div id="compliance-result" class="space-y-2 text-xs"></div>
-</div>`)}
+</div>`);loadCompliance()}
 
 async function loadCompliance(){
   const out=$('#compliance-result');
@@ -440,7 +443,7 @@ async function loadCompliance(){
       'GST returns: GSTR-1 + GSTR-3B filing is active.',
       'Income tax: ITR due date reminders are set.',
       'TDS: Quarterly due dates are tracked.',
-      'Compliance score: '+(j?.complianceScore??j?.compliance?.score??'-')+'/100'
+      'Compliance score: '+(j?.complianceScore ?? '-')+'/100'
     ]);
   }catch(e){
     showCard('compliance-result','What to watch this year',[
