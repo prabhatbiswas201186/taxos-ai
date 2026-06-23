@@ -440,7 +440,7 @@ async function loadCompliance(){
       'GST returns: GSTR-1 + GSTR-3B filing is active.',
       'Income tax: ITR due date reminders are set.',
       'TDS: Quarterly due dates are tracked.',
-      'Compliance score: '+(j?.compliance?.score??'-')+'/100'
+      'Compliance score: '+(j?.complianceScore??j?.compliance?.score??'-')+'/100'
     ]);
   }catch(e){
     showCard('compliance-result','What to watch this year',[
